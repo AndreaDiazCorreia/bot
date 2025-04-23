@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "strict": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "downlevelIteration": true,
+    "lib":["ES2021", "DOM"],
+    "outDir": "./dist",
+    "rootDir": ".",
+    "allowJs": true,
+    "moduleResolution": "node"
+  },
+  "include": [
+    "app.ts",
+    "bot/**/*",
+    "jobs/**/*",
+    "ln/**/*",
+    "lnurl/**/*",
+    "models/**/*",
+    "util/**/*",
+    "locales/**/*",
+  ],
+  "exclude": ["node_modules", "dist", "tests", "locales"]
+}

@@ -1,0 +1,647 @@
+start: |
+  ---———— DISCLAIMER ————---
+
+  ${disclaimer}
+  ---———— DISCLAIMER ————---
+  Этот Бот позволяет совершать куплю-продажу Биткоинов напрямую между людьми (p2p) посредством сети Lightning Network.
+
+  После инициализации Бота вам станут доступны следующие возможности:
+
+  1. Выставление заявок на покупку /buy или продажу /sell на ваших условиях.
+
+  2. Любой пользователь сможет принять ваши заявки нажав на кнопку "Купить" или "Продать" под ней. 
+
+  3. Вы, соответственно, тоже сможете принимать чужие заявки, чтобы купить или продать Биткоин на их условиях.
+
+  4. Все заявки и рейтинги пользователей будут появляться в Телеграм-канале ${channel}.
+
+  5. Если вы хотите продать, Бот выставит заявку в канале и будет ждать покупателя. 
+
+  6. Как только вашу заявку на продажу кто-то примет, Бот выставит счет-фактуру на оплату в сатоши. После оплаты, счет будет заблокирован (hold), и сатоши не попадут покупателю сразу. Ему дадут максимум ${orderExpiration} часы на осуществление ответного платежа в фиатных деньгах (рубли, гривны, любая другая валюта). Для этого Бот даст вам связаться напрямую, чтобы обговорить условия (с карты на карту, по номеру телефона, наличными). По получении фиатного платежа вы должны освободить фактуру командой /release.
+
+  7. Если вы хотите купить, Бот выставит заявку в канале и будет ждать продавца. 
+
+  8. Как только найдется продавец, нужно будет создать счет-фактуру на прием данного количества сатоши и скопировать эту строку символов в чат Бота. Затем Бот позволит вам связаться напрямую для согласования платежа в фиатных деньгах. Когда продавец получит платеж, он должен будет освободить фактуру командой /release, чтобы вы получили сатоши.
+
+  9. Уже выставленную заявку можно отменить командой /cancel, но только до момента ее принятия другой стороной.
+
+  Более подробную информацию о том, как использовать этого бота, вы можете найти здесь 👇
+
+  https://lnp2pbot.com/learn
+
+  Молниеносная и взаимовыгодная торговля!
+init_bot_error: Чтобы пользоваться Ботом сначала нужно его инициализировать командой /start
+non_handle_error: 👤 Для пользования этим ботом нужно активировать имя пользователя в Телеграм
+invoice_payment_request: |
+  Кто-то хочет купить ваши ${order.amount} сатоши за ${currency} ${order.fiat_amount}.
+
+  Репутация продавца: ${rate}, дней использования бота: ${days}
+
+  Примечание: Перед оплатой счета подтвердите, что прикрепленное изображение совпадает с изображением, отправленным при создании заказа
+
+  Пожалуйста, оплатите этот счет, чтобы начать продажу. Срок действия этого счета истекает через ${expirationTime} минут
+pending_sell: |
+  📝 Разместил заявку в канале ${channel}
+
+  Подождите, пока кто-нибудь примет вашу заявку на продажу. Если заявка не будет принята в течение ${orderExpirationWindow} часов, она будет удалена из канала автоматически. 
+
+  Примечание: Запомните это изображение, так как вы увидите его снова в счете на оплату
+  
+  Вы можете отменить эту заявку до того, как ее примет кто-то другой, командой 👇
+cancel_order_cmd: /cancel ${orderId}
+pending_buy: |
+  📝 Разместил заявку в канале ${channel}.
+
+  Подождите, пока кто-нибудь примет вашу заявку на покупку. Если заявка не будет принята в течение ${orderExpirationWindow} часов, она будет удалена из канала автоматически. 
+
+  Вы можете отменить эту заявку до того, как ее примет кто-то другой, командой 👇
+must_be_int: ${fieldName} - допускаются только целые числа
+must_be_numeric: ${fieldName} must be numeric
+sats_amount: сумма в сатоши
+fiat_amount: сумма в валюте
+sell_correct_format: |
+  /sell \<_сумма в сатоши_\> \<_сумма в валюте_\> \<_код валюты_\> \<_метод платежа_\> \[_премия/дисконт_\]
+
+  Чтобы создать заявку на продажу 1000 сатоши за 50 рублей \(RUB\) с оплатой по номеру телефона:
+
+  `/sell *1000* *50* *rub* "*на мобильный*"`
+
+  Чтобы создать заявку с привязкой к рыночной цене и премией 3%, нужно указать 0 \(ноль\) в поле \<_сумма в сатоши_\>:
+
+  `/sell 0 50 rub "на мобильный" 3`
+
+  Вместо точного количества валюты, можно указывать диапазон:
+
+  `/sell 0 100\-500 rub "на мобильный" 3`
+buy_correct_format: |
+  /buy \<_сумма в сатоши_\> \<_сумма в валюте_\> \<_код валюты_\> \<_метод платежа_\> \[_премия/дисконт_\]
+
+  Чтобы создать заявку на покупку 1000 сатоши за 50 рублей \(RUB\) с оплатой по номеру телефона:
+
+  `/buy 1000 50 rub "на мобильный"`
+
+  Чтобы создать заявку с привязкой к рыночной цене и дисконтом 3%, нужно указать 0 \(ноль\) в поле \<_сумма в сатоши_\>:
+
+  `/buy 0 50 rub "на мобильный" \-2`
+
+  Вместо точного количества валюты, можно указывать диапазон:
+
+  `/buy 0 100\-500 rub "на мобильный" \-2`
+min_invoice_amount: Счет-фактура должна быть на сумму не менее ${minPaymentAmount} сатоши
+min_expiration_time: Срок жизни счета-фактуры должен быть не менее ${expirationTime} минут
+invoice_expired: Срок жизни счета-фактуры истек
+invoice_expired_long: |
+  Срок жизни счета-фактуры истек.
+  Вы можете мне выставить новый счет командой 👇
+setinvoice_cmd_order: /setinvoice
+invoice_require_destination: В счете не указан адрес получателя
+invoice_require_hash: В счете не хватает контрольной суммы хеш
+order_id_invalid: Номер заявки неверен
+order_invalid_type: Это заявка типа ${type}
+order_already_taken: Эту заявку уже исполнил другой пользователь
+order_already_settled: Этот заказ уже урегулирован.
+invalid_data: Вы отправили некорректные данные. Попробуйте заново.
+begin_take_buy: |
+  🤖 Нажмите «Продолжить», чтобы принять предложение. Если вы нажмете «Отмена», заявка будет снова опубликована для всех. У вас есть ${expirationTime} минут для исполнения заявки. 👇
+
+  Примечание: Запомните это изображение, так как вы увидите его снова в счете на оплату
+continue: Продолжить
+cancel: Отменить
+pay_invoice: |
+  Примечание: Перед оплатой счета подтвердите, что прикрепленное изображение совпадает с изображением, отправленным при создании заказа
+
+  Пожалуйста, оплатите этот счет на ${amount} сат за ${currency} ${fiatAmount} для начала сделки.
+payment_received: |
+  🤑 Платеж получен!
+
+  Теперь нам нужно, чтобы покупатель отправил мне счет для отправки сатоши. После того, как покупатель укажет свой счет, я свяжу вас с ним напрямую.
+
+  Wait a bit. If the buyer does not cooperate, the collateral will be returned to you.
+someone_took_your_order: |
+  🤖 Кто-то принял Вашу заявку и уже прислал мне сатоши. Пожалуйста, используйте платежную систему, которая позволит Вам мгновенно переслать деньги, и у которой отсутствует риск заморозки средств.
+
+  Если по какой-либо причине Ваша платежная система задержит перевод, и средства не поступят в течение ${expirationTime}, сатоши будут автоматически возвращены продавцу. В этом случае покупатель несет риск, что мы не сможем убедить продавца выслать сатоши заново.
+
+  Репутация продавца: ${rate}, дней использования бота: ${days}
+
+  Если Вы согласны с таким условием, нажмите кнопку Продолжить 👇
+you_took_someone_order: |
+  🤖 Вы приняли эту заявку\\. Пожалуйста, используйте платежную систему, которая позволит Вам мгновенно переслать фиатные деньги, и у которой отсутствует риск заморозки средств\\.
+
+  *Если по какой\\-либо причине Ваша платежная система задержит перевод, и средства не поступят в течение ${expirationTime}, сатоши будут автоматически возвращены продавцу\\. В этом случае покупатель несет риск, что мы не сможем убедить продавца выслать сатоши заново\\.*
+
+  Если Вы согласны с таким условием, нажмите кнопку Продолжить 👇
+get_in_touch_with_seller: |
+  🤖 Order Id: #${orderId}
+
+  Свяжитесь с пользователем @${sellerUsername}, чтобы договориться, как отправить деньги. Вы должны заплатить ему ${currency} ${fiatAmount} через ${paymentMethod}.
+
+  Как только вы отправите фиатные деньги, дайте мне знать с помощью команды 👇
+fiatsent_order_cmd: /fiatsent
+get_in_touch_with_buyer: |
+  🤖 Order Id: #${orderId}
+
+  Свяжитесь с @${buyerUsername} для информирования его о том, как отправить вам ${currency} ${fiatAmount} через ${paymentMethod}. НЕ разблокируйте счет-фактуру, пока не убедитесь, что @${buyerUsername} прислал вам фиатные деньги.
+
+  После того, как деньги поступили, вы должны разблокировать сатоши командой /release.
+buyer_took_your_order: |
+  🤖 Order Id: #${orderId}
+
+  @${buyerUsername} принял Вашу заявку на продажу сатоши. Напишите ему инструкции, как Вам отправить ${currency} ${fiatAmount} через ${paymentMethod}.
+
+  Я сообщу тебе, когда покупатель подтвердит, что отправил фиат, затем тебе нужно будет проверить, пришел ли он.
+
+  Если покупатель не отвечает, ты можешь инициировать отмену или спор. Помни, что администратор НИКОГДА не свяжется с тобой, чтобы решить твой заказ, если ты сначала не откроешь спор.
+waiting_seller_to_pay: 'Я отправил продавцу запрос, чтобы он отправил нам ваши сатоши согласно заявке #${orderId}. Как только он совершит платеж, я свяжу его с вами напрямую'
+sell_success: Ваша продажа сатоши была завершена после подтверждения оплаты @${buyerUsername}\n⚡️🍊⚡️
+funds_released: 🕐 @${sellerUsername} Продавец разблокировал сатоши. Вы должны дождаться оплаты вашего счета, и для этого ваш кошелек должен оставаться онлайн.
+rate_counterpart: Оцените вашего контрагента, пожалуйста
+cant_process_order: Эта заявка не может быть обработана, убедитесь, что идентификатор правильный
+cant_release_order: Эта заявка не может быть разблокирована, покупатель не выставил мне счет для получения сатоши.
+no_id_related: У вас нет заказа, связанного с этим идентификатором
+sell_sats: Продать сатоши
+buy_sats: Купить сатоши
+order_detail: |
+  Id: `${order._id}`
+  
+  Status previous to dispute: ${previousDisputeStatus}
+
+  Статус: ${status}
+
+  Создатель: @${creator || ''}
+
+  Покупатель: @${buyerUsername || ''}
+
+  репутация покупателя: ${buyerReputation}
+
+  Days in operation \\(buyer\\): ${buyerAge}
+
+  Successful trades \\(buyer\\): ${buyerTrades}
+
+  Продавец: @${sellerUsername || ''}
+
+  репутация продавца: ${sellerReputation}
+
+  Days in operation \\(seller\\): ${sellerAge}
+
+  Successful trades \\(seller\\): ${sellerTrades}
+
+  Сумма \\(сатоши\\): ${order.amount}
+
+  Комиссия Бота \\(sats\\): ${fee}
+
+  Комиссия Сети \\(sats\\): ${order.routing_fee}
+
+  Сумма \\(фиат\\) ${order.fiat_code}: ${order.fiat_amount}
+
+  Метод оплаты: ${paymentMethod}
+
+  Премия/дисконт: ${priceMargin}
+
+  Создана: ${createdAt}
+
+  Исполнена: ${takenAt || ''}
+
+  seller invoice hash: `${order.hash || ''}`
+
+  seller invoice secret: `${order.secret || ''}`
+
+  buyer payment request: `${order.buyer_invoice || ''}`
+seller: продавец
+buyer: покупатель
+dispute_started_channel: |
+  ${type} @${initiatorUser} TG ID: ${initiatorTgId} 
+  инициировал разбирательство с @${counterPartyUser} TG ID: ${counterPartyUserTgId} относительно заявки:
+
+  ${detailedOrder}
+
+  Seller Token: ${sellerToken}
+  Buyer Token: ${buyerToken}
+
+  @${initiatorUser} уже имел разбирательств: ${buyerDisputes}
+  @${counterPartyUser} уже имел разбирательств: ${sellerDisputes}
+you_started: '🥴 Вы начали спор по вашему заказу Id: ${orderId}.'
+counterpart_started: '🥴 Ваш контрагент начал спор по вашему заказу Id: ${orderId}.'
+dispute_started: '${who} Скоро к вам придет решатель, когда он будет назначен на ваш спор, бот сообщит вам его/ее имя пользователя, только он/она сможет прийти к вам. Вы можете написать ему напрямую, но если он свяжется с вами первым, вы должны попросить его сказать вам, какой токен у вашего спора, ваш токен: ${token}.'
+must_be_valid_currency: 'код валюты должен быть допустимым кодом валюты, например: RUB, USD, EUR'
+must_be_number_or_range: 'сумма в валюте должно быть число или числовой диапазон вида: <минимум>-<максимум>.'
+invalid_lightning_address: неверный адрес LN
+unavailable_lightning_address: адрес LN ${la} недоступен
+help: |
+  /sell <_сумма в сатоши_> <_сумма в валюте_> <_код валюты_> <_метод платежа_> [_премия/дисконт_] - Создать заявку на продажу
+  /buy <_сумма в сатоши_> <_сумма в валюте_> <_код валюты_> <_метод платежа_> [_премия/дисконт_] - Создать заявку на покупку
+  /takeorder <_order id_> - Позволяет пользователю принять заказ из чата с ботом, не заходя на канал, где он был опубликован
+  /info - Показать информацию о Боте
+  /showusername - Позволяет показывать или скрывать имя пользователя в каждой новой созданной заявке, значение по умолчанию — нет (false) 
+  /showvolume - Позволяет отображать объем торгов по каждому новому созданному ордеру, по умолчанию - нет (false)
+  /setinvoice - Позволяет покупателю обновить счет-фактуру Lightning, по которой он получает сатоши
+  /setaddress <_lightning address / off_> - Позволяет покупателю указать статический платежный адрес (lightning address), _off_ - отключить
+  /setlang - Позволяет пользователю изменить язык
+  /settings - Отображает текущие настройки пользователя
+  /listorders - Пользователь может перечислить свои незавершенные заявки
+  /listcurrencies - Перечислите валюты, которые мы можем использовать без указания суммы в сатоши
+  /fiatsent <_order id_> - Покупатель указывает, что уже отправил фиатные деньги продавцу
+  /release <_order id_> - Продавец разблокирует сатоши
+  /dispute <_order id_> - Инициировать разбирательство между участниками
+  /disclaimer - Отображает отказ от ответственности
+  /cancel <_order id_> - Отменить заявку до ее исполнения
+  /cancelall - Отменить все выставленные заявки
+  /disclaimer - показать условия использования бота
+
+  Nostr:
+  /setnpub <_nostr npub_> - Обновляет ваш публичный ключ nostr, эта команда выполняется только в мастере /settings
+  /nostr - показывает публичный ключ nostr бота и ретрансляторы, используемые для публикации.
+
+  Сообщества:
+  /community - Создать новое сообщество
+  /mycomms - показывает созданные вами сообщества
+  /mycomm <_@community_> — войти в Мастер администрирования сообщества
+  /findcomms <_fiat code_> - Находит сообщества, работающие с указанной валютой
+  /setcomm <_@groupOfACommunity / off_> - Установите сообщество по умолчанию или удалите его с помощью «Выкл.»
+  /settleorder <_order id_> - Принять оплату продавца и автоматически отправить сат покупателю, по умолчанию должно быть сообщество
+  /cancelorder <_id orden_> - Отменяет заказ который возвращает сат продавцу, по умолчанию должно быть сообщество
+  /deldispute <_username_> <_id order_> - Удаляет спор от пользователя в сообществе, по умолчанию должно быть сообщество
+  /ban <_username_> - Забанить пользователя в сообществе, должно быть сообщество по умолчанию
+  /unban <_username_> - Unban a user from a community, there should be a default community
+  
+  /version - Показывает текущую версию бота
+  /help - Показать ключевые команды
+must_be_gt_or_eq: ${fieldName} должно быть больше или равно ${qty}
+you_have_been_banned: Вы были забанены!
+I_told_seller_you_sent_fiat: 🤖 Я сообщил @${sellerUsername}, что ты отправил фиат, когда продавец подтвердит получение денег, он должен освободить средства. Если он откажется, можешь открыть спор.
+buyer_told_me_that_sent_fiat: |
+  🤖 @${buyerUsername} сообщил мне, что уже отправил тебе фиат, как только подтвердишь получение денег, пожалуйста, освободи средства. Учти, что пока ты не освободишь средства, ты не сможешь создать или принять другой заказ.
+
+  После освобождения деньги пойдут покупателю, и процесс будет необратим, поэтому выполняй это только если ты 💯 уверен.
+
+  Нажми следующую команду, если хочешь освободить сатоши для покупателя 👇
+release_order_cmd: /release
+you_have_orders_waiting: 🤖 У вас есть одна или несколько заявок, в которых покупатель указал, что отправил вам фиатные деньги, но вы не разблокировали средства. Вы не можете продолжать торговать, пока эти заявки не будут иполнены.
+user_banned: Пользователь забанен!
+user_unbanned: Разблокированный пользователь!
+user_not_found: Пользователь не найден!
+error_parsing_invoice: Ошибка анализа счета-фактуры.
+invalid_id: Неверный ID.
+cant_take_own_order: Вы не можете взять свой собственный заказ!
+send_me_lninvoice: Пожалуйста, пришлите мне счет-фактуру Lightning на ${order.amount} сат, although to make things easier for you I also accept invoices without amount, I will make the payment of ${amount} sats.
+you_have_no_orders: У вас сейчас нет заявок.
+not_rate_for_currency: |
+  ${fiatRateProvider} для этой фиатной валюты нет обменного курсас.
+  Для использования этой валюты необходимо указать количество сатоши.
+  Если вы хотите, чтобы эта монета была включена в список /listcurrencies, вы можете сделать запрос здесь 👇
+
+  🌐 https://yadio.io/api.html
+invoice_with_incorrect_amount: В счете указана неверная сумма.
+invoice_updated: 📝 Счет успешно обновлен!
+invoice_updated_and_will_be_paid: Счет успешно обновлен и будет оплачен в ближайшие несколько секунд!
+invoice_already_being_paid: Вы уже отправили счет за эту заявку, и я пытаюсь оплатить его прямо сейчас.
+lightning_address_saved: Aдрес Lightning успешно сохранен.
+cancel_error: Этот заказ не может быть отменен в данный момент
+cancel_success: 'Вы отменили заявку номер ${orderId}!'
+cancelall_success: Вы отменили все свои размещенные заявки!
+order_cancelled_by_admin: 'Администраторы отменили заявку номер ${orderId}!'
+order_cancelled_by_counterparty: 'Идентификатор отмены заказа вашим контрагентом: ${orderId}!'
+order_completed: 'Вы выполнили заявку номер ${orderId}!'
+order_completed_by_admin: 'Администраторы выполнили заявку номер ${orderId}!'
+have_to_wait_for_counterpart: Вы уже выполнили эту операцию, теперь нужно дождаться действий контрагента.
+ok_cooperativecancel: 'Ваш контрагент согласился, и идентификатор заявки: ${orderId} был отменен.'
+refund_cooperativecancel: Вы получили возврат платежа Lightning, больше ничего делать не нужно.
+init_cooperativecancel: |
+ 🕒 Ты начал отмену заказа Id: ${orderId}, твоя противоположная сторона также должна подтвердить, что хочет отменить его. Если он/она не ответит, можешь открыть спор.
+
+  Ни один администратор не свяжется с тобой для отмены заказа, если ты сначала не откроешь спор.
+counterparty_wants_cooperativecancel: |
+  😳 Твоя противоположная сторона хочет отменить заказ Id: ${orderId}
+
+  Ни один администратор не свяжется с тобой для отмены заказа, если ты сначала не откроешь спор.
+
+  Если ты согласен, используй команду 👇
+invoice_payment_failed: ⛔ Я пытался отправить вам деньги, но платеж по вашему счету не прошел. Я попытаюсь оплатить его еще ${attempts} раза с интервалом в ${process.env.PENDING_PAYMENT_WINDOW} минут. Убедитесь, что ваш узел/кошелек онлайн!
+cant_take_more_orders: ⛔ Прошу прощения! Вы не можете взять новую заявку, пока вас ждут другие.
+seller_released: 💸 Продавец уже разблокировал сатоши, вы должны дождаться оплаты вашего счета.
+your_purchase_is_completed: |
+  🪙 Ваша покупка была успешно завершена! @${sellerUsername} подтвердил ваш платеж в фиатной валюте, и я уже оплатил ваш счет. Наслаждайтесь вашими сатошами!!
+
+  ⚡️🍊⚡️
+problem_getting_price: Возникла проблема с получением цены этой монеты, повторите попытку позже. Если проблема не исчезнет, ​​обратитесь к администратору.
+update_user_setting: Я изменил поле ${field} на ${newState}
+lightning_address_disabled: Lightning адрес отключен.
+invalid_range_with_amount: |
+  Диапазоны доступны только для плавающих ставок.
+
+  Либо используйте диапазоны, либо укажите количество сат, но не то и другое одновременно.
+too_many_pending_orders: Вы достигли максимального количества выставленных заявок.
+name: Имя
+group: Группа
+channel: Канал
+solver: Модератор
+published: Опубликована
+created: Создана
+yes: Да
+no: Нет
+wizard_add_invoice_init: |
+  Чтобы отправить вам сатоши, мне нужно, чтобы вы выставили мне счет на сумму ${satsAmount} сат. Это эквивалентно ${currency} ${fiatAmount}.
+
+  Если вы не отправите его в течение ${expirationTime} минут, сделка будет отменена.
+wizard_add_invoice_exit: |
+  Вы вышли из режима мастера\\. Теперь вы можете вводить команды. Вы все еще можете ввести счет на заявку командой /setinvoice с указанием Id заявки и счета\\. Вы можете отправить мне счет на сумму ${amount} сатоши, но я также принимаю счета без суммы\\.
+
+  /setinvoice
+wizard_community_enter_name: Введите название вашего сообщества
+wizard_community_too_long_name: Имя должно содержать не более ${length} символов.
+wizard_community_enter_currency: Enter the code of the fiat currency(ies) with which users can operate in this community, if there is more than one you must enter each code separated by a blank space.
+wizard_community_enter_group: |
+  Введите идентификатор или название группы сообщества. Kак Бот, так и
+  вы должны быть администраторами группы:
+  Например: @МоеСообщество
+wizard_community_enter_order_channels: |
+  Предложения в вашем сообществе должны быть опубликованы в телеграм-канале, если вы укажете канал, и покупки, и продажи будут опубликованы в этом канале. Если указать два канала, покупки будут публиковаться в одном, а продажи в другом, и вы, и бот должны быть администраторами обоих каналов.
+
+  Вы можете ввести название канала или, если вы хотите использовать два канала, введите два имени, разделенные пробелом.
+    
+  Например: @МоеСообществоПокупки @МоеСообществоПродажи
+wizard_community_one_or_two_channels: Вы должны ввести один или два канала.
+wizard_community_enter_solvers: |
+  Теперь введите имена пользователей, которые отвечают за проведение разбирательств.
+  Каждое имя пользователя, разделенное пробелом.
+wizard_community_must_enter_names: Вы должны ввести одно или два имени, разделенных пробелом.
+wizard_community_enter_solvers_channel: Чтобы закончить, сообщите мне идентификатор или название канала, который бот будет использовать для уведомления о возникновении разбирательства, пожалуйста, включите @ в начале названия канала.
+wizard_community_success: |
+  Поздравляем, вы создали свое сообщество!
+
+  Чтобы ваше сообщество оставалось активным, оно должно успешно выполнять заказы за последние ${days} дней.
+wizard_community_wrong_permissions: У вас нет прав администратора для этой группы или канала.
+wizard_community_you_are_not_admin: You are not admin on ${channel}.
+wizard_community_duplicated_name: Введенное вами имя уже используется другим сообществом, попробуйте еще раз с другим именем.
+wizard_to_exit: /exit to exit the wizard.
+wizard_exit: Вы вышли из режима мастера, теперь вы можете писать команды.
+wizard_add_fiat_amount: |
+  Введите сумму ${currency}, которую вы хотите ${action}.
+
+  Помните, что она должна быть между ${minAmount} и ${maxAmount}:
+wizard_add_fiat_wrong_amount: Неверная сумма. Введите число от ${minAmount} до ${maxAmount}
+wizard_add_fiat_correct_amount: 'Выбранная сумма: ${currency} ${fiatAmount}.'
+order_expired: Срок действия этой заявки уже истек!
+cant_add_invoice: Вы больше не можете добавить счет для этой сделки!
+expired_order: |
+  Срок действия этой сделки истек, и она не была исполнена
+
+  ${detailedOrder}
+
+  @${sellerUser.username}, количество разбирательств: ${sellerUser.disputes} 
+  @${buyerUser.username}, количество разбирательств: ${buyerUser.disputes}
+expired_order_to_buyer: |
+  🚨🚨🚨 Эта заявка почти истекла и должна быть немедленно исполнена или отменена. Если Вы не отправляли фиатный перевод, то все еще можете отменить заявку командой /cancel.
+
+  Если Вы отправили перевод, но продавец отказывается разблокировать сатоши, Вы можете инициировать разбирательство командой /dispute. У hold инвойса, который оплатил продавец, есть время истечения. Вы должны принять все меры для исполнения сделки до этого времени, иначе Вы рискуете потерять деньги.
+
+  Если Вам нужна помошь, Вы можете написать в группу ${helpGroup}.
+expired_order_to_seller: |
+  🚨🚨🚨 Эта заявка почти истекла и должна быть немедленно исполнена или отменена. Если Вы не получили фиатный перевод, Вы все еще можете отменить заявку командой /cancel. 
+
+  Если Вы получили перевод, пожалуйста, разблокируйте платеж командой /release. В противном случае покупатель инициирует разбирательство, что отразится на Вашей репутации. 
+
+  Если Вам нужна помошь, Вы можете написать в группу ${helpGroup}.
+didnt_add_invoice: '🤨 Вы не отправили счет на получение сатош для заявки номер ${orderId}'
+buyer_havent_add_invoice: '😔 Покупатель не прислал мне счет за вашу продажу под номером ${orderId}. Ваши сатоши были возвращены.'
+buyer_havent_add_invoice_to_admin_channel: |
+  Покупатель @${username} принял заявку с идентификатором ${orderId}, но не выставил счет на получение оплаты. Время истекло, заказ снова опубликован.
+havent_paid_invoice: '🤨 Вы не оплатили счет за продажу сатош для сделки с идентификатором: ${orderId}'
+seller_havent_paid_invoice: '😔 Продавец не оплатил счет за вашу покупку Id: ${orderId}, операция отменена.'
+seller_havent_add_invoice_to_admin_channel: |
+  Продавец @${user.username} не оплатил счет, соответствующий заказу с идентификатором: ${orderId}.
+  Время истекло, заказ снова опубликован.
+pending_payment_success_to_admin: |
+  У пользователя @${username} был ожидающий платеж по его идентификатору покупки ${orderId} на ${amount} сатоши. Платеж был произведен после ${attempts} попыток.
+
+  Подтверждение оплаты: ${paymentSecret}
+pending_payment_success: |
+  Я оплатил счет Lightning для вашего идентификатора покупки: ${id}!
+
+  Подтверждение оплаты: ${paymentSecret}
+pending_payment_failed: |
+  Я пытался оплатить ваш счет в общей сложности ${attempts} раза, и все потерпели неудачу, иногда пользователи сети Lightning не могут получать платежи потому что в вашем кошельке/узле недостаточно входной емкости, решение может состоять в том, чтобы сгенерировать новый счет из другого кошелька, у которого есть емкость.
+pending_payment_failed_to_admin: |
+  Платеж по счету-фактуре на покупку с идентификатором ${orderId} пользователя @${username} не выполнен!
+
+  Попытка оплаты: ${attempts}
+selling: Продаю
+buying: Покупаю
+receive_payment: Расчет
+pay: Расчет
+is: Я
+trading_volume: 'Обьем торгов: ${volume} сат'
+satoshis: сатоши
+by: посредством
+rate: Kурс
+has_successful_trades: Провел ${trades} успешных сделок
+user_age: "Использует бота ${pluralize(days, 'день', 'дня', 'дней')}"
+price: цена
+for: на
+generic_error: Произошла непредвиденная ошибка
+sats: сатоши
+no_capital_letters: 🤖 Пожалуйста, пишите команды прописными буквами
+unknown_command: 😕 Не понимаю Вас. Воспользуйтесь меню /help для списка доступных команд
+invoice_invalid_error: |
+  Ошибка при чтении инвойса Lightning. Ожидаю получить текстовую строку с начальными буквами 'lnbc'.
+
+  Если Вы хотите отменить и вернуться в режим ввода команд, напечатайте /exit
+invoice_expiry_too_short_error: Время истечения счета слишком короткое
+invoice_has_expired_error: Счет истек
+invoice_has_wrong_destination_error: Получатель счета неверен
+invoice_must_be_larger_error: Сумма счета должна быть не менее ${minInvoice} сатоши
+hours: часов
+minutes: минут
+community_updated: Community successfully updated
+operation_successful: Operation successfully!
+select_community: Select the community
+what_modify: What do you want to modify?
+channels: Channels
+dispute_solvers: Solvers
+no_default_community: You no longer have a community by default
+community_not_found: Community not found
+currency: Валюта
+currencies: Currencies
+currency_not_supported: |
+  This currency cannot be used in this community, it is only allowed to use [${currencies}].
+
+  You can leave this community executing /setcomm off
+press_to_continue: Press the button to continue
+receive: receive
+send: send
+new_dispute: ⚠️⚠️⚠️ A user has started a dispute, touch the button to take it
+take_dispute: Take dispute
+not_authorized: 🤨 You are not authorized to perform this operation
+need_default_community: To perform this operation you need to have a default community
+enter_sats_amount: Enter sats amount, enter only numbers.
+market_price: Market price
+enter_currency: 'Enter a currency by your code, eg: USD'
+choose_currency: Choose a currency
+enter_currency_amount: Enter the amount of ${currency}, enter only numbers.
+enter_premium_discount: Enter the premium(+) or discount(-) to apply to the market price.
+no_premium_or_discount: No premium or discount
+enter_payment_method: Enter the payment method
+invalid_currency: Invalid currency
+not_number: It must be a number
+not_zero: Cannot be 0 (zero)
+not_negative: Cannot be a negative number
+wizard_community_wrong_percent: The percentage must be between 0 and 100
+wizard_community_enter_fee_percent: |
+  Enter the fee:
+
+  The fee in a community is variable and is indicated as a percentage from 0 to 100, if you do not want to charge fee, indicate 0, if you want to charge half of the maximum value, indicate 50, if you want it to have the maximum value, indicate 100.
+fee: Fee
+use_default: Use by default
+orders: Orders
+volume: Volume
+users: Users
+not_found_dispute: There is no dispute for this order
+max_allowed: The maximum allowed is ${max}
+dispute_channel: Dispute channel
+not_wizard: You are not in wizard mode at the moment, if you have doubts you can type /help
+wizard_help: You are in wizard mode, if you need to go back to command mode run /exit
+hold_invoice_memo: '@${botName} - Escrow amount Order #${orderId}: SELL BTC for ${fiatCode} ${fiatAmount} - It WILL FREEZE IN WALLET. It will release once you run /release. It will return if buyer does not confirm the payment'
+tap_button: Select an order to perform the operation
+tap_release: Select the order to release the funds, once you touch the button the operation cannot be reversed.
+earnings: Earnings
+premium: Premium
+discount: Discount
+premium_discount: premium/discount
+withdraw_earnings: Withdraw earnings
+invoice_expired_earnings: The invoice has expired, resubmit a withdrawal request with a new invoice.
+what_to_do: What do you want to do?
+community: Community
+seller_already_released: Don't worry the seller already released the funds 🥲
+select_language: Select language
+must_enter_text: You must enter only text
+current_earnings: |
+  Orders completed so far in the community: ${ordersToRedeem}
+
+  Community Earnings: ${earnings} sats
+you_dont_have_communities: You have no communities created
+users_added: 'You have added: ${users}'
+users_not_added: 'Could not add to: ${users}; please make sure these users have started the bot'
+delete_community: Delete community
+are_you_sure: Are you sure?
+no_permission: You do not have permissions to perform this operation
+make_public: Make public
+make_private: Make private
+bot_kicked: Bot was kicked from chat, must be member and admin
+chat_not_found: Chat not found, are you sure you added the bot to the group/channel?
+not_member: You are not member of that chat
+upgraded_to_supergroup: The chat was upgraded to 'supergroup' and the Id has changed, check the chat Id again
+community_deleted: Это сообщество было удалено из-за неактивности, я отвязал вас от него, попробуйте создать заказ заново
+dispute_too_soon: Нельзя начинать диспут так скоро, наберитесь терпения и подождите несколько минут, пока ответит ваш контрагент
+maintenance: 🚨 Бот находится на обслуживании, повторите попытку позже 🚨
+# START modules/nostr
+user_npub_updated: Вы успешно добавили свой публичный ключ ${npub}!
+nostr_info: |
+  npub:
+  <code>${npub}</code>
+
+  hex:
+  <code>${publicKey}</code>
+
+  relays:
+  ${relays}
+npub_not_valid: |
+  Недействительный <a href="https://github.com/nostr-protocol/nips/blob/master/19.md">NIP-19</a> npub. Пожалуйста, проверьте ввод.
+
+  Пример:
+  /setnpub npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6
+# END modules/nostr
+
+# START modules/community
+community_admin: |
+  <strong>Community Admin Mode</strong>
+  > ${community.name} (${community.group})
+  
+  Public:
+    ${community.public ? 'Yes' : 'No'}
+  Fee:
+    ${community.fee}
+  Earnings:
+    ${community.earnings}
+  npub:
+    <code>${community.nostr_public_key || ''}</code>
+
+  /help - help messages.
+  /exit - to exit the wizard.
+community_admin_help: |
+  <strong>Community Admin Mode</strong>
+  # commands
+
+  /setnpub &lt;npub&gt; - Configure community's Nostr public key.
+community_npub_updated: You added the community's pubkey ${npub} successfully!
+# END modules/community
+
+# START modules/orders
+order_not_found: Заказ не найден.
+# END modules/orders
+
+# START modules/user
+user_settings: |
+  <strong>User settings for @${user.username}</strong>
+
+  Language:
+    ${language.emoji} ${language.name}
+  Community:
+    ${community || '🛇'}
+  npub:
+    <code>${npub || '🛇'}</code>
+  lightning address:
+    <code>${lightning_address || '🛇'}</code>
+
+  <strong># HELP</strong>
+  /setnpub &lt;npub&gt; - Configure user public key.
+  /exit - to exit the wizard.
+# END modules/user
+# check hold invoice
+invoice_settled: Invoice already settled
+invoice_cancelled: Invoice cancelled
+invoice_held: Invoice held
+invoice_no_info: I don't have information for that invoice
+bot_info: |
+  Bot fee: ${bot_fee}
+
+  Max routing fee: ${routing_fee}
+
+  Node URI: `${node_uri}`
+  
+  Node status: ${status}
+
+  User info:
+
+  ${user_info}
+user_info: |
+  Volume traded: ${volume_traded}
+  Total rating: ${total_rating}
+  Disputes: ${disputes}
+disclaimer: |
+  *Используя торгового бота P2P, вы соглашаетесь со следующими условиями:*.
+
+  Бот представляет собой программное обеспечение с открытым исходным кодом, доступное для использования, копирования, модификации и запуска любым желающим. Разработчики не несут ответственности за действия других лиц, использующих данное программное обеспечение любым способом, законным или незаконным, честным или нечестным.
+
+  Бот предоставляется на условиях "как есть" и "как доступно", и разработчики не дают никаких гарантий, явных или подразумеваемых, в отношении бота или его использования.
+
+  Разработчики и специалисты по разрешению споров прилагают все усилия, чтобы исключить использование бота недобросовестными участниками, мошенниками и аферистами, однако пользователь осознает, что система может быть использована, и принимает на себя всю ответственность при ее использовании.
+
+  Ни разработчики, ни разрешители споров не несут ответственности за какие-либо потери или убытки, которые могут возникнуть у пользователя в результате использования бота.
+order_frozen: вы заморозили заказ
+dispute_solver: 👮‍♂️ На вашем споре будет присутствовать решатель, вы можете написать ему напрямую, нажав его имя пользователя => @${solver} <=, если решатель напишет вам первым, вы должны попросить его сообщить вам, какой токен у вашего спора, ваш токен - ${token}.
+setinvoice_no_response: У вас нет заказов для оплаты
+already_cancelled: Предложение уже отменено!
+privacy: |
+  *Политика конфиденциальности*
+  
+  Ваша конфиденциальность важна для нас, и мы стремимся защищать вашу личную информацию. Эта Политика конфиденциальности объясняет, какую информацию мы собираем, как и с какой целью.
+
+  *1. Информация, которую мы собираем:*  
+    - _Информация о пользователе:_ Ваше имя пользователя и ID Telegram, полученные через API Telegram.
+    - _Данные активности бота:_ Включают количество завершенных транзакций, количество дней, в течение которых вы использовали бота, общий объем торговых операций, рейтинг контрагента и запись о спорах, если таковые имеются.
+
+  *2. Как мы используем информацию:* 
+    - _Система репутации:_ Для создания и поддержания системы репутации каждого пользователя.
+    - _Разрешение споров:_ В случае спора мы предоставляем медиатору (решателю) следующую информацию: ваше имя пользователя, ID Telegram, количество завершенных транзакций, рейтинг контрагента, количество дней использования бота и количество накопленных споров.
+check_solvers: В вашем сообществе ${communityName} нет решателей. Добавьте хотя бы одно в течение ${remainingDays} дн., чтобы сообщество не было отключено.
+check_solvers_last_warning: В вашем сообществе ${communityName} нет решателей. Пожалуйста, добавьте хотя бы один сегодня, чтобы предотвратить отключение сообщества.

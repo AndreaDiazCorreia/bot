@@ -1,0 +1,644 @@
+start: |
+  ---———— DISCLAIMER ————---
+
+  ${disclaimer}
+  ---———— DISCLAIMER ————---
+  Este bot vai te ajudar a completar transações P2P usando Bitcoin via Lightning Network.
+
+  Depois de iniciar o bot, você pode usar os seguintes comandos:
+
+  1. Publique sua oferta usando o comando /buy ou /sell e siga as instruções.
+
+  2. Espere que outro usuário ative sua oferta usando os botões "Buy" ou "Sell". Você também pode aceitar as ofertas de outros usuários usando esses botões!
+
+  3. Suas ordens e reputação são visíveis no canal ${channel} .
+
+  4. Se você estiver vendendo o bot, publicará a oferta no canal ${channel} na expectativa de que outro usuário aceite o pedido. Você pode cancelar essa oferta de venda a qualquer momento ANTES que outro usuário a aceite com o comando /cancel.
+
+  5. Uma vez que alguém aceite sua oferta, o bot solicitará que você pague a fatura da rede Lightning, Esse pagamento será retido, o pedido expirará em um tempo máximo de ${orderExpiration} horas a partir do momento em que foi aceito. O bot informará quem é o comprador para que você forneça a informação para receber o pagamento. Depois de receber o pagamento, você deve liberar os fundos para que os sats cheguem ao invoice do comprador usando o comando /release.
+
+  6. Se você quiser comprar, precisa publicar sua oferta usando o comando /buy e esperar até que um vendedor a aceite. Você pode cancelar o pedido a qualquer momento usando o comando /cancel.
+
+  7. Depois que alguém aceite seu pedido de compra, você precisa criar uma fatura (invoice) na rede Lightning e enviá-la para o bot, envie a fatura como texto o bot não aceita QR code. Depois disso você deve entrar em contato com o vendedor para receber as instruções e informação para realizar o de pagamento. Depois de pagar, o vendedor deve usar o comando /release. O bot enviará os sats para sua fatura de rede de Lightning.
+
+  8. Se você está aceitando uma oferta de venda, ou seja, você está comprando, deve criar uma fatura na rede Lightning para receber seus sats e pedir ao vendedor que forneça as instruções de pagamento. Depois que o vendedor receber o pagamento fiduciário, ele usará o comando /release para enviar os sats à sua wallet LN.
+
+  9. Se você estiver aceitando uma oferta de compra, ou seja, você está vendendo sats, deve pagar a fatura do na rede Lightning enviado pelo bot. Estes sats serão retidos até que o comprador efetue o pagamento e envie o comando /fiatsent. Você deve entrar em contato com o comprador e fornecer a informação necessária para receber o pagamento. Depois de receber o pagamento fiduciário, você deve liberar os sats retidos pelo bot usando o comando /release. Os sats serão enviados automaticamente para a wallet LN do comprador.
+
+  Mais informação sobre como usar o bot aqui 👇
+
+  https://lnp2pbot.com/aprenda
+
+  Faça transações rápidas e seguras!
+init_bot_error: Para usar este bot, você deve iniciar com o comando /start
+non_handle_error: 👤 Para usar este bot, você precisa ativar seu nome de usuário do Telegram, para ativá-lo, abra as configurações e selecione Meu Perfil -> Editar -> Nome de Usuário
+invoice_payment_request: |
+  Alguém quer comprar ${order.amount} sats por ${currency} ${order.fiat_amount}.
+
+  Reputação do comprador: ${rate}, dias usando o bot: ${days}
+
+  Nota: Confirme que a imagem anexada corresponde à enviada durante a criação do pedido antes de pagar a fatura
+
+  Por favor, pague esta fatura para iniciar seu processo de venda, a fatura expirará em ${expirationTime} minutos
+pending_sell: |
+  📝 Oferta publicada no canal ${channel} 
+
+  Você tem que esperar até que outro usuário aceite sua oferta, ela estará disponível por ${orderExpirationWindow} horas no canal
+  
+  Nota: Lembre-se desta imagem porque você a verá novamente dentro da fatura a pagar
+
+  Você pode cancelar a oferta antes que outro usuário a aceite executando o comando 👇
+cancel_order_cmd: |
+  /cancel ${orderId}
+pending_buy: |
+  📝 Oferta publicada no canal ${channel} 
+
+  Você tem que esperar até que outro usuário aceite sua oferta, ela estará disponível por ${orderExpirationWindow} horas no canal
+
+  Você pode cancelar a oferta antes que outro usuário a aceite executando o comando 👇
+must_be_int: ${fieldName} deve ser um número enteiro
+must_be_numeric: ${fieldName} deve ser numérico
+sats_amount: quantidade de sats
+fiat_amount: quantidade fiduciária
+sell_correct_format: |
+  /sell \<_sats amount_\> \<_fiat amount_\> \<_fiat code_\> \<_payment method_\> \[_premium/discount_\]
+
+  Para criar uma oferta de venda de 1000 satoshis por 2 dólares americanos \(USD\) e indicar que o pagamento fiduciário é por transferência ou depósito no caixa eletrônico, você deve evitar \<\> e \[\]\.
+
+  `/sell 1000 2 USD "transferência ou depósito no caixa eletrônico"`
+
+  Para criar uma oferta de venda com um acréscimo no preço de 3% \(premium\) Você precisa adicionar o parâmetro 0 indicando a quantidade fiduciária\. O bot calculará o preço de venda usando o preço de mercado do Bitcoin e aplicando o acréscimo indicado, você precisa adicionar 3 como o último parâmetro
+
+  `/sell 0 2 USD "forma de pagamento" 3`
+
+  Para criar uma oferta de venda por faixa, em vez de indicar uma quantidade fiduciária fixa, você pode indicar um valor mínimo e máximo para suas transações separados por um hífen *\-*
+
+  `/sell 0 100\-500 USD "forma de pagamento" 3`
+buy_correct_format: |
+  /buy \<_sats amount_\> \<_fiat amount_\> \<_fiat code_\> \<_payment method_\> \[_premium/discount_\]
+
+  Para criar uma oferta e pedir 1000 Satoshis por 2 \(USD\) e indicar que o pagamento fiduciário é através de transferência, você deve omitir os dois \<\> e \[\]\.
+
+  `/buy 1000 2 USD "transferência online"`
+
+  Se você não deseja estabelecer uma quantidade fixa de satoshis e deseja comprar com um preço debaixo do valor de mercado, você pode fazer um pedido de compra estabelecendo um determinado desconto. Essa taxa é a porcentagem que será subtraída do preço de mercado quando sua ordem for aceita. Basta colocar 0 no campo \<_sats amount_\> , o bot calculará o preço. Se você quiser comprar com um desconto de 2% deve escrever \-2 como último parâmetro
+
+  `/buy 0 2 USD "forma de pagamento" \-2`
+
+  Se você deseja criar uma oferta de compra numa faixa de valores, em vez de indicar uma quantidade fiduciária fixa, pode definir o valor mínimo e máximo para suas transações separados por um hífen *\-*
+
+  `/buy 0 100\-500 USD "forma de pagamento" \-2`
+min_invoice_amount: fatura precisa ser igual ou maior a ${minPaymentAmount} satoshis
+min_expiration_time: A expiração do tempo da fatura deve ser de pelo menos ${expirationTime} minutos
+invoice_expired: Fatura expirou
+invoice_expired_long: |
+  Fatura expirou. Você pode usar o seguinte comando para enviar uma nova fatura e receber os satoshis 👇
+setinvoice_cmd_order: /setinvoice
+invoice_require_destination: Fatura precisa de um endereço de destino
+invoice_require_hash: Fatura precisa de um hash
+order_id_invalid: ID do pedido inválido
+order_invalid_type: Este ${type} pedido é inválido
+order_already_taken: Este pedido já foi aceito por outro usuário.
+order_already_settled: Esta ordem já foi liquidada.
+invalid_data: Você enviou dados inválidos, tente novamente.
+begin_take_buy: |
+  🤖 Pressione Continue para aceitar a oferta, se você pressionar Cancel, desvincularei você do pedido e ele será publicado novamente. Você tem ${expirationTime} minutos ou o pedido expirará. 👇
+
+  Nota: Lembre-se desta imagem porque você a verá novamente dentro da fatura a pagar
+continue: Continuar
+cancel: Cancelar
+pay_invoice: |
+  Nota: Confirme que a imagem anexada corresponde à enviada durante a criação do pedido antes de pagar a fatura
+
+  Por favor, pague esta fatura de ${amount} sats por ${currency} ${fiatAmount} para iniciar a operação.
+payment_received: |
+  🤑 Pagamento recebido!
+
+  Agora eu preciso que o comprador envie uma fatura para que eu possa enviar satoshis para sua wallet LN. Assim que o comprador enviar a fatura, colocarei vocês dois em contato.
+
+  Paciência. Se o comprador não aparecer, a garantia retornará à sua wallet LN.
+someone_took_your_order: |
+  🤖 Alguém aceitou sua oferta e já enviou os sats, use um processador de pagamentos que permita enviar o dinheiro imediatamente e no qual não há risco de congelar os fundos.
+
+  Se por algum motivo a plataforma coloca o pagamento em pausa e os fundos não chegarem em menos de ${expirationTime}, Os sats retornarão ao vendedor, colocando o comprador em risco e não poderei forçar o vendedor a enviar os sats novamente.
+
+  Reputação do vendedor: ${rate}, dias usando o bot: ${days}
+
+  Se você concorda com o exposto acima, pressione o botão para continuar 👇
+you_took_someone_order: |
+  🤖 Você aceitou uma oferta de venda, use um processador de pagamentos que permita enviar o dinheiro imediatamente e no qual não há risco de congelar os fundos\\.
+
+  *Se por algum motivo a plataforma coloca o pagamento em pausa e os fundos não chegarem em menos de ${expirationTime}, Os sats retornarão ao vendedor, colocando o comprador em risco e não poderei forçar o vendedor a enviar os sats novamente\\.*
+
+  Se você concorda com o exposto acima, pressione o botão para continuar 👇
+get_in_touch_with_seller: |
+  🤖 Order Id: #${orderId}
+
+  Entre em contato com o vendedor, usuário @${sellerUsername} para receber informação sobre como enviar o pagamento de ${currency} ${fiatAmount} usando ${paymentMethod}.
+
+  Depois de enviar o dinheiro, por favor me avise com o comando 👇
+fiatsent_order_cmd: /fiatsent
+get_in_touch_with_buyer: |
+  🤖 Order Id: #${orderId}
+
+  Entre em contato com o comprador, usuário @${buyerUsername} para enviar informação sobre como você receberá ${currency} ${fiatAmount} usando ${paymentMethod}. Não libere os sats até verificar que recebeu o pagamento.
+
+  Depois de confirmar a recepção do pagamento, você deve liberar os sats.
+buyer_took_your_order: |
+  🤖 Order Id: #${orderId}
+
+  @${buyerUsername} aceitou sua oferta e deseja comprar seus sats. Entre em contato e envie a informação sobre como você receberá ${currency} ${fiatAmount} usando ${paymentMethod}.
+
+  Avisarei quando o comprador informar que enviou o pagamento, depois você deverá verificar se os fundos chegaram.
+
+  Se o comprador não responder, você pode iniciar um cancelamento ou uma disputa. Lembre-se de que um administrador NUNCA o contactará para resolver seu pedido, a menos que você abra uma disputa primeiro.
+waiting_seller_to_pay: 'Enviei uma solicitação de pagamento ao vendedor para que ele envie seus sats para o #${orderId}, Assim que o pagamento for feito, vou colocar vocês em contato'
+sell_success: Sua venda de SATs foi concluída após a confirmação do pagamento de @${buyerUsername} ⚡️🍊⚡️
+funds_released: 🕐 @${sellerUsername} Já lançou os Satoshis, espere que sua fatura seja paga a qualquer momento, lembre-se de que sua carteira precisa estar online para receber através da Lightning Network.
+rate_counterpart: 'Por favor, qualifique sua contraparte:'
+cant_process_order: Este pedido não pode ser processado, verifique se o ID está correto.
+cant_release_order: Este pedido não pode ser divulgado, o comprador não enviou uma fatura para onde pagar
+no_id_related: Você não tem nenhum pedido associado a este ID.
+sell_sats: Venda Satoshis
+buy_sats: Compre Satoshis
+order_detail: |
+  Id: `${order._id}`
+
+  Situação anterior ao litígio: ${previousDisputeStatus}
+
+  Status: ${status}
+
+  Criadora: @${creator || ''}
+
+  Compradora: @${buyerUsername || ''}
+
+  Reputação do comprador: ${buyerReputation}
+
+  Days in operation \\(buyer\\): ${buyerAge}
+
+  Successful trades \\(buyer\\): ${buyerTrades}
+
+  Vendedora: @${sellerUsername || ''}
+
+  Reputação do vendedor: ${sellerReputation}
+
+  Days in operation \\(seller\\): ${sellerAge}
+
+  Successful trades \\(seller\\): ${sellerTrades}
+
+  Valor do pedido \\(sats\\): ${order.amount}
+
+  Taxa de bot \\(sats\\): ${fee}
+
+  Taxa de roteamento \\(sats\\): ${order.routing_fee}
+
+  Quantidade fiduciária \\(fiat\\) ${order.fiat_code}: ${order.fiat_amount}
+
+  Método de pagamento do pedido: ${paymentMethod}
+
+  Prêmio/desconto: ${priceMargin}
+
+  Criada: ${createdAt}
+
+  Ocupada: ${takenAt || ''}
+
+  Hash da fatura do vendedor: `${order.hash || ''}`
+
+  Secreto da fatura do vendedor: `${order.secret || ''}`
+
+  Solicitação de pagamento do comprador: `${order.buyer_invoice || ''}`
+seller: vendedora
+buyer: compradora
+dispute_started_channel: |
+  Usuário ${type} @${initiatorUser} TG ID: ${initiatorTgId} 
+  iniciou uma disputa com @${counterPartyUser} TG ID: ${counterPartyUserTgId} para o pedido
+
+  ${detailedOrder}
+
+  Seller Token: ${sellerToken}
+  Buyer Token: ${buyerToken}
+
+  @${initiatorUser} esteve envolvido em ${buyerDisputes} disputas
+  @${counterPartyUser} esteve envolvido em ${sellerDisputes} disputas
+you_started: '🥴 Você iniciou uma disputa em seu pedido Id: ${orderId}.'
+counterpart_started: '🥴 Sua contraparte iniciou uma disputa em seu pedido Id: ${orderId}.'
+dispute_started: '${who} Um solucionador o atenderá em breve. Quando ele for designado para sua disputa, o bot informará seu nome de usuário e somente ele poderá atendê-lo. Você pode escrever diretamente para ele/ela, mas se ele/ela entrar em contato com você primeiro, você deve pedir a ele/ela que lhe diga qual é o token de sua disputa, seu token é: ${token}.'
+must_be_valid_currency: 'Fiat_code deve ser um código válido, por exemplo: USD, EUR, você pode ver uma lista completa executando /listcurrencies'
+must_be_number_or_range: 'Fiat_amount deve ser um número ou intervalo numérico no <mínima>-<máxima> formato'
+invalid_lightning_address: Inválida lightning address
+unavailable_lightning_address: Indisponível lightning address ${la}
+help: |
+  /sell <quantia em sats> <quantia em fiat> <código fiduciário> <forma de pagamento> premium/desconto - Criar uma ordem de venda
+  /buy <quantia em sats> <quantia em fiat> <código fiduciário> <forma de pagamento> premium/desconto - Cria um pedido de compra
+  /takeorder <_order id_> - Permite ao usuário fazer um pedido dentro do chat com o bot, sem precisar ir até o canal onde foi publicado
+  /info - Mostra informações sobre o bot
+  /showusername - Permite mostrar ou ocultar o nome de usuário em cada novo pedido criado, o valor padrão é não (falso)
+  /showvolume - Permite mostrar o volume de negócios em cada novo pedido criado, o padrão é não (falso)
+  /setinvoice - Permite que o comprador atualize a fatura Lightning na qual receberá sats
+  /setaddress <lightning address / off> - Permite que o comprador indique um endereço de pagamento estático (lightning address), off para desativá-lo
+  /setlang - Permite que o usuário altere o idioma
+  /settings - Exibe as configurações atuais do usuário
+  /listorders - O usuário pode listar seus pedidos inacabados
+  /listcurrencies - Lista as moedas que podemos usar sem indicar o valor em satoshis
+  /fiatsent <order id> - O comprador indica que já enviou o dinheiro Fiat para o vendedor
+  /release <ID do pedido> - O vendedor libera os satoshis
+  /dispute <ID do pedido> - Abre uma disputa entre os participantes
+  /disclaimer - Exibe isenção de responsabilidade
+  /cancel <ID do pedido> - Cancela um pedido que não foi feito
+  /cancelall - Cancela todos os pedidos postados e não atendidos
+  /disclaimer - Mostra os termos e condições ao usar o bot
+
+  Nostr:
+  /setnpub <_nostr npub_> - Atualiza sua nostr pubkey, este comando só é executável no assistente /settings
+  /nostr - Mostra a chave pública nostr do bot e os relés usados para publicar
+
+  Comunidades:
+  /community - Crie uma nova comunidade
+  /mycomms - Mostra as comunidades que você criou
+  /mycomm <_@community_> - Entra no Community Admin Wizard
+  /findcomms <fiat code> - Busca por comunidades que operam com a moeda indicada
+  /setcomm <@groupOfACommunity / off> - Defina uma comunidade padrão ou remova-a com 'off'
+  /settleorder <order id> - Aceita o pagamento do vendedor e envia automaticamente o sats para o comprador, deve haver uma comunidade por padrão
+  /cancelorder <id order> - Cancela o pedido que devolve o sats ao vendedor, deve haver uma comunidade por padrão
+  /deldispute <username> <order id> - Exclui uma disputa de usuário na comunidade, deve haver uma comunidade padrão
+  /ban <username> - Banir um usuário de uma comunidade, deve haver uma comunidade padrão
+  /unban <username> - Desbanir um usuário de uma comunidade, deve haver uma comunidade padrão
+
+  /version - mostra a versão atual do bot
+  /help - mensagem de ajuda
+must_be_gt_or_eq: ${fieldName} Deve ser mais ou igual a ${qty}
+you_have_been_banned: Você foi banido!
+I_told_seller_you_sent_fiat: 🤖 Informei a @${sellerUsername} que você enviou o dinheiro fiat, quando o vendedor confirmar que recebeu seu dinheiro, ele deverá liberar os fundos. Se ele se recusar, você pode abrir uma disputa.
+buyer_told_me_that_sent_fiat: |
+  🤖 @${buyerUsername} informou que já enviou o dinheiro fiduciário, depois de confirmar que você o recebeu, libere fundos.  
+  
+  Após liberar, o dinheiro irá para o comprador e não há volta, então só realize este processo se estiver 💯 certo.
+
+  Pressione o seguinte comando se quiser liberar os Sats para o comprador 👇
+release_order_cmd: /release
+you_have_orders_waiting: 🤖 Você tem um ou mais pedidos em que o comprador informa que o dinheiro fiduciário foi enviado a você, mas você não lançou os SATs.Você não poderá criar novos pedidos até lançar esses fundos.
+user_banned: Usuário proibido!
+user_unbanned: Usuário não proibido!
+user_not_found: O usuário não foi encontrado no banco de dados!
+parse_invoice_error: Erro analisando a fatura
+invalid_id: ID Inválido
+cant_take_own_order: Você não pode fazer seu próprio pedido.
+send_me_lninvoice: Por favor, envie-me uma fatura de lightning para ${amount} sats, Embora para facilitar as coisas para você, eu também aceito faturas sem valor, farei o pagamento de ${amount} sats.
+you_have_no_orders: Você não tem ordens ativas
+not_rate_for_currency: |
+  ${fiatRateProvider} Há uma taxa de câmbio para esta moeda,
+  Se você quiser usar esta moeda, você deve indicar quantos Satoshis você deseja
+  Se você quiser essa moeda na listagem, vá para este link para fazer uma solicitação. 👇
+
+  🌐 https://yadio.io/api.html
+invoice_with_incorrect_amount: A quantidade declarada na fatura está incorreta
+invoice_updated: 📝 A fatura foi atualizada corretamente!
+invoice_updated_and_will_be_paid: As faturas foram atualizadas corretamente e serão pagas nos próximos segundos!
+invoice_already_being_paid: Você já enviou uma fatura para este pedido e estou tentando pagar neste momento certo.
+lightning_address_saved: Lightning address foi salvo
+cancel_error: Esta ordem não pode ser cancelada neste momento
+cancel_success: 'Você cancelou o pedido Id: ${orderId}!'
+cancelall_success: Você cancelou todos os seus pedidos publicados!
+order_cancelled_by_admin: 'Admin cancelou o pedido Id: ${orderId}!'
+order_completed: 'Você concluiu o pedido Id: ${orderId}!'
+order_completed_by_admin: 'Admin concluiu o pedido Id: ${orderId}!'
+order_cancelled_by_counterparty: 'Sua contraparte cancelou o ID do pedido: ${orderId}!'
+have_to_wait_for_counterpart: 🕒 Você já fez esta operação, deve esperar a outra parte agir
+ok_cooperativecancel: '👍 Contraparte concordou e o pedido Id: ${orderId} foi cancelado'
+refund_cooperativecancel: 💰 Você recebeu um reembolso do seu pagamento de lightning, não há mais ações para fazer
+init_cooperativecancel: |
+  🕒 Você iniciou o cancelamento do pedido Id: ${orderId}, sua contraparte também deve me informar que deseja cancelá-lo. Se ele/ela não responder, você pode abrir uma disputa.
+
+  Nenhum administrador o contatará para cancelar seu pedido, a menos que você abra uma disputa primeiro.
+counterparty_wants_cooperativecancel: |
+  😳 Sua contraparte quer cancelar o pedido Id: ${orderId}
+
+  Nenhum administrador o contatará para cancelar seu pedido, a menos que você abra uma disputa primeiro.
+
+  Se você concorda, utilize o comando 👇
+invoice_payment_failed: ⛔ Eu tentei enviar -lhe os sats, mas o pagamento da sua fatura falhou, vou tentar ${attempts} mais vezes em ${pendingPaymentWindow} janela de minutos, verifique seu nó/carteira está online
+cant_take_more_orders: ⛔ Desculpe!Você não pode fazer outro pedido enquanto tem outras pessoas esperando por você
+seller_released: 💸 O vendedor já lançou os Satoshis, você deve esperar que sua fatura seja paga.
+your_purchase_is_completed: |
+  🪙 Sua compra de Satoshis foi concluída bem-sucedida, @${sellerUsername} confirmou seu pagamento fiduciário e eu paguei sua fatura, aproveite o som de dinheiro!
+
+  ⚡️🍊⚡️
+problem_getting_price: Há um problema em acessar esse preço da moeda, tente mais tarde, se o problema persistir, entre em contato com um administrador.
+update_user_setting: Eu modifiquei o campo ${field} para ${newState}
+lightning_address_disabled: Endereço de raios desativado
+invalid_range_with_amount: |
+  Os intervalos estão disponíveis apenas para taxas flutuantes
+
+  Use intervalos ou especifique a quantidade de SATs, mas não escreva os dois
+too_many_pending_orders: Você atingiu a quantidade máxima de pedidos que podem ser publicados simultaneamente
+name: Nome
+group: Grupo
+channel: Canal
+solver: Solucionador
+published: Publicadas
+created: Criada
+yes: Sim
+no: Não
+wizard_add_invoice_init: |
+  🤖 Eu preciso que você me envie e a fatura por ${satsAmount} satoshis que valem ${currency} ${fiatAmount} para que eu possa enviar o dinheiro.
+
+  Se você não enviar a fatura dentro de ${expirationTime} minutos, o pedido será cancelado
+wizard_add_invoice_exit: |
+  Você sai do modo assistente, você pode saber escrever os comandos, ainda pode adicionar uma fatura ao pedido com o comand /setinvoice Indicando o ID do pedido e a fatura, você pode me enviar uma fatura para ${amount} satoshis, mas também aceitarei faturas sem quantidade:
+
+  /setinvoice
+wizard_community_enter_name: Escolha um nome para sua comunidade
+wizard_community_too_long_name: O nome pode ter um comprimento máximo de ${length} caracteres.
+wizard_community_enter_currency: Digite o código da moeda(s) fiduciária com a qual os usuários podem operar nesta comunidade, se houver mais de um, você deve inserir cada código separado por um espaço em branco.
+wizard_community_enter_group: |
+  Escolha um ID ou um nome para o grupo, você deve ser o administrador do grupo, bem como o bot:
+
+  i.e: @MyCommunity
+wizard_community_enter_order_channels: |
+  Todas as ordens da sua comunidade devem ser publicadas em um canal de telegrama se você me indicar apenas um canal, os pedidos de compra e venda serão publicados lá.
+
+  Se você indicar dois canais, os pedidos de compra serão colocados em um e venderão pedidos no outro. Você e o bot devem ser administradores de ambos os canais.
+
+  Indique o nome do canal ou, caso você queira usar dois Chanels, indique os dois nomes separados por um espaço.
+
+  i.e : @MyCommunitySell  @MyCommunityBuy
+wizard_community_one_or_two_channels: Você deve indicar um ou dois canais
+wizard_community_enter_solvers: Agora, por favor, anote os nomes dos usuários que resolverão disputas, cada um deles separado por um espaço.
+wizard_community_must_enter_names: Você deve adicionar pelo menos um nome, ou dois separados por um espaço
+wizard_community_enter_solvers_channel: Indique o ID ou o nome do canal que o bot deve usar para alertar quando uma disputa for chamada, use @ no início do nome do canal.
+wizard_community_success: |
+  Parabéns, você criou sua comunidade!
+
+  Para que sua comunidade permaneça ativa, ela deve ter concluído pedidos com sucesso nos últimos ${days} dias.
+wizard_community_wrong_permissions: Você não tem permissões de administrador para este grupo ou canal
+wizard_community_you_are_not_admin: Você não é administrador em ${channel}.
+wizard_community_duplicated_name: O nome que você digitou já está sendo usado por outra comunidade, tente novamente com outro nome.
+wizard_to_exit: /exit Para sair do assistente.
+wizard_exit: Você tem o modo de assistência de saída, agora você pode escrever comandos
+wizard_add_fiat_amount: |
+  Por favor, indique a quantidade de ${currency} que você quer ${action}.
+
+  Lembre -se de que deve ser apenas números e estar entre ${minAmount} e ${maxAmount}:
+wizard_add_fiat_wrong_amount: Quantidade inválida, entrada deve estar entre ${minAmount} e ${maxAmount}, deve ser apenas números.
+wizard_add_fiat_correct_amount: 'Quantia: ${currency} ${fiatAmount}.'
+order_expired: Este pedido expirou!
+cant_add_invoice: Você não pode mais adicionar uma fatura a este pedido!
+expired_order: |
+  Este pedido expirou sem conclusão
+
+  ${detailedOrder}
+
+  @${sellerUser.username} tem ${sellerUser.disputes} disputas
+  @${buyerUser.username} tem ${buyerUser.disputes} disputas
+expired_order_to_buyer: |
+  🚨🚨🚨 Este pedido está prestes a expirar e deve ser concluído ou cancelado imediatamente, se você ainda não enviou o dinheiro fiduciário, ainda poderá cancelar com o comando /cancel.
+
+  Se você enviou o dinheiro fiduciário, mas o vendedor se recusa a liberar os sats, você pode abrir uma disputa com o comando /dispute. A fatura de espera que o vendedor pagou tem um tempo de validade e você deve resolver esse pedido antes de expirar ou correr o risco de perder seu dinheiro.
+
+  Se precisar de ajuda, pode escrever para o grupo ${helpGroup}
+expired_order_to_seller: |
+  🚨🚨🚨 Este pedido está prestes a expirar e deve ser concluído ou cancelado imediatamente, se você não recebeu o dinheiro fiduciário, mas ainda poderá cancelar com o comando /cancel.
+
+  Se você recebeu o dinheiro da Fiat, libere os fundos com o comando /release, caso contrário, estará sob o risco de o comprador abrir uma disputa que afetará sua reputação.
+
+  Se precisar de ajuda, pode escrever para o grupo ${helpGroup}
+didnt_add_invoice: '🤨 Você não enviou a fatura para receber sats para o pedido Id: ${orderId}'
+buyer_havent_add_invoice: '😔 O comprador não me enviou a fatura para receber os sats para o seu pedido Id: ${orderId}, seus sats foram enviados de volta para você'
+buyer_havent_add_invoice_to_admin_channel: 'Compradora @${username} tomou o orderId: ${orderId} mas não enviou a fatura para onde receber sats, o tempo expirou, a ordem foi republicada.'
+havent_paid_invoice: '🤨 Você não pagou a fatura para vender sats para o pedido Id: ${orderId}'
+seller_havent_paid_invoice: '😔 O vendedor não pagou a fatura pela sua compra Id: ${orderId}, A operação foi cancelada.'
+seller_havent_add_invoice_to_admin_channel: 'Vendedora @${username} não pagou a fatura do pedido Id: ${orderId} O lapso do tempo terminou e o pedido foi publicado novamente.'
+pending_payment_success_to_admin: |
+  Usuário @${username} Tinha uma fatura pendente, eles pagam pelo pedido de compra Id: ${orderId} por ${amount} satoshis, foi finalmente executado depois ${attempts} tentativas.
+
+  Prova de pagamento: ${paymentSecret}
+pending_payment_success: |
+  Eu paguei a fatura de lightning para ${amount} satoshis, ordem Id: ${id}!
+
+  Prova de pagamento: ${paymentSecret}
+pending_payment_failed: |
+  🤖 Eu tentei pagar sua fatura ${attempts} Tempos e falhas, às vezes os usuários da rede de lightning não podem receber pagamentos porque sua carteira não possui capacidade de entrada suficiente ou o nó não está bem conectado na rede. Você pode tentar gerar uma fatura de outra carteira.
+pending_payment_failed_to_admin: |
+  Pagamento da fatura para o pedido de compra ${orderId} de usuário @${username} falhou.
+
+  Tentativas de pagamento: ${attempts}
+selling: Vendendo
+buying: Comprando
+receive_payment: Receber pagamento
+pay: Pagar
+is: é
+trading_volume: 'Volume de negócios: ${volume} sats'
+satoshis: satoshis
+by: por
+rate: Avaliar
+has_successful_trades: Tem ${trades} negociações de sucesso
+user_age: "Usa o bot há ${pluralize(days, 'dia', 'dias')}"
+price: Preço
+for: Por
+generic_error: Um erro ocorreu
+sats: sats
+no_capital_letters: 🤖 Você está tentando executar um comando com a primeira letra capitalizada. Escreva o comando inteiro em minúsculas.
+unknown_command: 😕 Eu não entendi. Por favor, use /help para ver a lista de comandos disponíveis
+invoice_invalid_error: |
+  Erro analisando a fatura. Por favor, copiar-colar uma fatura de lightning começando com 'lnbc'.
+
+  Se você deseja abortar e retornar ao modo de entrada de comando, basta executar /exit
+invoice_expiry_too_short_error: A expiração da fatura é muito curta
+invoice_has_expired_error: Fatura expirou
+invoice_has_wrong_destination_error: Fatura tem destino errado
+invoice_must_be_larger_error: Fatura deve ser por pelo menos ${minInvoice} sats
+hours: horas
+minutes: minutos
+community_updated: Comunidade atualizada com sucesso
+operation_successful: Operação bem sucedida!
+select_community: Selecione a comunidade
+what_modify: O que você deseja modificar?
+channels: Canais
+dispute_solvers: Solucionadores
+no_default_community: Você não tem mais uma comunidade por padrão
+community_not_found: Comunidade não encontrada
+currency: Moeda
+currencies: Moedas
+currency_not_supported: |
+  Essa moeda não pode ser usada nesta comunidade, só pode usar [${currencies}].
+
+  Você pode deixar esta comunidade executando /setcomm off
+press_to_continue: Pressione o botão para continuar
+receive: receber
+send: mandar
+new_dispute: ⚠️⚠️⚠️ Um usuário iniciou uma disputa, toque no botão para levá-lo
+take_dispute: Tomar disputa
+not_authorized: 🤨 Você não está autorizado a executar esta operação
+need_default_community: Para executar esta operação, você precisa ter uma comunidade padrão
+enter_sats_amount: Digite o valor do SATS, digite apenas números.
+market_price: Preço de mercado
+enter_currency: 'Digite uma moeda pelo seu código, por exemplo: USD'
+choose_currency: Escolha uma moeda
+enter_currency_amount: Digite o valor de ${currency}, digite apenas números.
+enter_premium_discount: Digite o prêmio(+) ou desconto(-) para aplicar ao preço de mercado.
+no_premium_or_discount: Sem prêmio ou desconto
+enter_payment_method: Insira o método de pagamento
+invalid_currency: Moeda inválida
+not_number: Deve ser um número
+not_zero: Não pode ser 0 (zero)
+not_negative: Não pode ser um número negativo
+wizard_community_wrong_percent: A porcentagem deve estar entre 0 e 100
+wizard_community_enter_fee_percent: |
+  Digite a taxa:
+
+  A taxa em uma comunidade é variável e é indicada como uma porcentagem de 0 a 100, se você não quiser cobrar taxa, indique 0, se quiser cobrar metade do valor máximo, indique 50, se você quiser terO valor máximo, indica 100.
+fee: Taxa
+use_default: Use por padrão
+orders: Ordens
+volume: volume
+users: Usuárias
+not_found_dispute: Não há disputa para este pedido
+max_allowed: O máximo permitido é ${max}
+dispute_channel: Canal de disputa
+not_wizard: Você não está no modo assistente no momento, se tiver dúvidas, pode digitar /help
+wizard_help: Você está no modo Wizard, se precisar voltar ao modo de comando executar /exit
+hold_invoice_memo: '@${botName} - Ordem de quantidade de garantia #${orderId}: Venda o BTC para ${fiatCode} ${fiatAmount} - Vai congelar na carteira. Ele será lançado assim que você correr /release. Ele retornará se o comprador não confirmar o pagamento'
+tap_button: Selecione um pedido para executar a operação
+tap_release: Selecione o pedido para liberar os fundos, depois de tocar no botão, a operação não pode ser revertida.
+earnings: Ganhos
+premium: Prêmio
+discount: Desconto
+premium_discount: Prêmio/desconto
+withdraw_earnings: Retirar ganhos
+invoice_expired_earnings: A fatura expirou, reenvie uma solicitação de retirada com uma nova fatura.
+what_to_do: O que você quer fazer?
+community: Comunidade
+seller_already_released: Não se preocupe, o vendedor já lançou os fundos 🥲
+select_language: Selecione o idioma
+must_enter_text: Você deve inserir apenas texto
+current_earnings: |
+  Pedidos concluídos até agora na comunidade: ${ordersToRedeem}
+
+  Ganhos da comunidade: ${earnings} sats
+you_dont_have_communities: Você não tem comunidades criadas
+users_added: 'Você foi adicionado: ${users}'
+users_not_added: 'Não poderia adicionar a: ${users}; Certifique-se de que esses usuários começaram o bot'
+delete_community: Delete community
+are_you_sure: Are you sure?
+no_permission: You do not have permissions to perform this operation
+make_public: Make public
+make_private: Make private
+bot_kicked: Bot was kicked from chat, must be member and admin
+chat_not_found: Chat not found, are you sure you added the bot to the group/channel?
+not_member: You are not member of that chat
+upgraded_to_supergroup: The chat was upgraded to 'supergroup' and the Id has changed, check the chat Id again
+community_deleted: Esta comunidade foi deletada por inatividade, desvinculei você dela, tente criar o pedido novamente
+dispute_too_soon: Você não pode iniciar uma disputa tão cedo, seja paciente e aguarde alguns minutos para que sua contraparte responda
+maintenance: 🚨 Bot em manutenção, tente novamente mais tarde 🚨
+# START modules/nostr
+user_npub_updated: Você definiu sua chave pública ${npub} com sucesso!
+nostr_info: |
+  npub:
+  <code>${npub}</code>
+
+  hex:
+  <code>${publicKey}</code>
+
+  relays:
+  ${relays}
+npub_not_valid: |
+  Você inseriu um npub inválido (consulte <a href="https://github.com/nostr-protocol/nips/blob/master/19.md">NIP-19</a>).
+
+  Exemplo:
+  /setnpub npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6
+# END modules/nostr
+
+# START modules/community
+community_admin: |
+  <strong>Community Admin Mode</strong>
+  > ${community.name} (${community.group})
+  
+  Public:
+    ${community.public ? 'Yes' : 'No'}
+  Fee:
+    ${community.fee}
+  Earnings:
+    ${community.earnings}
+  npub:
+    <code>${community.nostr_public_key || ''}</code>
+
+  /help - help messages.
+  /exit - to exit the wizard.
+community_admin_help: |
+  <strong>Community Admin Mode</strong>
+  # commands
+
+  /setnpub &lt;npub&gt; - Configure community's public key.
+community_npub_updated: You added the community's pubkey ${npub} successfully!
+# END modules/community
+
+# START modules/orders
+order_not_found: Ordem não encontrada.
+# END modules/orders
+
+# START modules/user
+user_settings: |
+  <strong>User settings for @${user.username}</strong>
+
+  Language:
+    ${language.emoji} ${language.name}
+  Community:
+    ${community || '🛇'}
+  npub:
+    <code>${npub || '🛇'}</code>
+  lightning address:
+    <code>${lightning_address || '🛇'}</code>
+
+  <strong># HELP</strong>
+  /setnpub &lt;npub&gt; - Configure user's Nostr public key.
+  /exit - to exit the wizard.
+# END modules/user
+# check hold invoice
+invoice_settled: Fatura já liquidada
+invoice_cancelled: Fatura cancelada
+invoice_held: Fatura mantida
+invoice_no_info: Não tenho informações para essa fatura
+bot_info: |
+  Bot fee: ${bot_fee}
+
+  Max routing fee: ${routing_fee}
+
+  Node URI: `${node_uri}`
+  
+  Node status: ${status}
+
+  User info:
+
+  ${user_info}
+user_info: |
+  Volume traded: ${volume_traded}
+  Total rating: ${total_rating}
+  Disputes: ${disputes}
+disclaimer: |
+  *Ao utilizar o bot de comércio P2P, o utilizador concorda com os seguintes termos e condições*
+
+  O bot é um software de código aberto que está disponível para qualquer pessoa usar, copiar, modificar e executar. Os desenvolvedores não são responsáveis pelas ações de outros indivíduos que usam o software de qualquer maneira, seja legal ou ilegal, honesta ou desonesta.
+
+  O bot é fornecido numa base "como está" e "como disponível", e os criadores não dão garantias de qualquer tipo, expressas ou implícitas, relativamente ao bot ou à sua utilização.
+
+  Os criadores e os responsáveis pela resolução de litígios envidam os seus melhores esforços para impedir que os maus actores, as fraudes e as burlas utilizem o bot, mas o utilizador reconhece que o sistema pode ser explorado e aceita toda a responsabilidade enquanto o utiliza.
+
+  Nem os criadores nem os solucionadores de litígios são responsáveis por quaisquer perdas ou danos que o utilizador possa sofrer como resultado da utilização do bot.
+order_frozen: Você congelou o pedido
+dispute_solver: 👮‍♂️ Um solucionador atenderá sua disputa. Você pode escrever para ele diretamente tocando no nome de usuário dele => @${solver} <=, se o solucionador escrever para você primeiro, você deve pedir a ele que lhe diga qual é o token de sua disputa, seu token é ${token}.
+setinvoice_no_response: Você não tem ordens a serem pagas
+already_cancelled: A oferta já foi cancelada!
+privacy: |
+  *Política de Privacidade*
+  
+  Sua privacidade é importante para nós, e estamos comprometidos em proteger suas informações pessoais. Esta Política de Privacidade explica quais informações coletamos, como, e com qual propósito.
+
+  *1. Informações que Coletamos:*  
+    - _Informações do Usuário:_ Seu nome de usuário e ID do Telegram, obtidos por meio da API do Telegram.
+    - _Dados de Atividade no Bot:_ Incluem o número de transações concluídas, o número de dias que você usou o bot, o volume total negociado, a classificação da contraparte e o registro de disputas, se houver.
+
+  *2. Como Usamos as Informações:* 
+    - _Sistema de Reputação:_ Para construir e manter o sistema de reputação de cada usuário.
+    - _Resolução de Disputas:_ Em caso de uma disputa, fornecemos ao mediador (solver) as seguintes informações: seu nome de usuário, ID do Telegram, número de transações concluídas, classificação da contraparte, número de dias usando o bot e o número de disputas acumuladas.
+check_solvers: Sua comunidade ${communityName} não possui solucionadores. Adicione pelo menos um dentro de ${remainingDays} dias para evitar que a comunidade seja desativada.
+check_solvers_last_warning: Sua comunidade ${communityName} não possui solucionadores. Adicione pelo menos um hoje para evitar que a comunidade seja desativada.

@@ -1,0 +1,647 @@
+start: |
+  ---———— DISCLAIMER ————---
+
+  ${disclaimer}
+  ---———— DISCLAIMER ————---
+  
+  Dieser Bot wird dir helfen, P2P Bitcoin-Transaktionen über das Lightning Network durchzuführen.
+
+  Sobald du den Bot gestartet hast, kannst du die folgenden Befehle verwenden:
+
+  1. Veröffentliche deinen Auftrag mit dem Befehl /buy oder /sell und befolge die Anweisungen.
+
+  2. Warte darauf, dass ein anderer Nutzer deinen Auftrag mit den Schaltflächen "Kaufen" oder "Verkaufen" auswählt. Du kannst mit diesen Schaltflächen auch die Aufträge anderer Nutzer auswählen!
+
+  3. Deine Aufträge und dein Ruf sind im ${channel} Kanal sichtbar.
+
+  4. Wenn du verkaufst, veröffentlicht der Bot den Auftrag im ${channel} Kanal in der Erwartung, dass ein anderer Nutzer den Auftrag annimmt. Du kannst diese Verkaufsauftrag jederzeit mit dem Befehl /cancel stornieren, BEVOR ein anderer Nutzer diesen annimmt.
+
+  5. Sobald jemand deinen Auftrag annimmt, wird der Bot dich auffordern, die Lighning-Netzwerk LN-Rechnung zu bezahlen. Diese Zahlung wird zurückgehalten und der Auftrag läuft nach maximal ${orderExpiration} Stunden ab dem Zeitpunkt der Bestellannahme ab. Der Bot verrät dir, wer der Käufer ist und du kannst Anweisungen für die FIAT-Zahlung senden. Sobald du die FIAT-Zahlung erhalten hast, musst du die Sats mit dem Befehl /release an den Käufer schicken.
+
+  6. Wenn du kaufen willst, musst du deinen Auftrag mit dem Befehl /buy veröffentlichen und warten, bis ein Verkäufer diesen annimmt. Du kannst den Auftrag jederzeit mit dem Befehl /cancel abbrechen.
+
+  7. Sobald jemand deinen Auftrag annimmt, musst du eine Lightnng-Netzwerk LN-Rechnung erstellen und sie an den Bot schicken. Danach musst du deinen Verkäufer kontaktieren, um deine FIAT-Zahlungsanweisungen zu erhalten. Sobald du bezahlt hast, sollte der Verkäufer den Befehl /release verwenden, damit der Bot dir die Sats zu deiner Lightning-Netzwerk LN-Rechnung sendet.
+
+  8. Wenn du einen Verkaufsauftrag annimmst, d.h. du kaufst, musst du eine LN-Rechnung erstellen, um deine Sats zu erhalten, und den Verkäufer bitten, dir die FIAT-Zahlungsanweisungen zu geben. Sobald der Verkäufer die FIAT-Zahlung erhält, muss er den Befehl /release verwenden, um die Sats an dein Wallet zu senden.
+
+  9. Wenn du einen Kaufauftrag annimmst, d.h. du verkaufst Sats, musst du die LN-Rechnung bezahlen. Du musst dich mit dem Käufer in Verbindung setzen und ihm die Informationen geben, die er für die FIAT-Zahlung benötigt. Sobald du die FIAT-Zahlung erhalten hast, musst du das vom Bot gehaltene Guthaben mit dem Befehl /release freigeben und die Sats werden automatisch an die Wallet des Käufers geschickt.
+
+  Weitere Informationen zur Verwendung dieses Bots finden Sie hier 👇
+
+  https://lnp2pbot.com/learn
+  
+  Mache eine schnelle und sichere Transaktion!
+init_bot_error: Um diesen Bot zu verwenden, musst du zuerst den Boot mit dem Befehl /start initialisieren
+non_handle_error: 👤 Um diesen Bot zu nutzen, musst du deinen Telegram-Benutzernamen aktivieren. Um ihn zu aktivieren, öffne das Hamburger-Menü oben links und wähle Einstellungen -> Profil bearbeiten -> Benutzernamen
+invoice_payment_request: |
+  Jemand möchte ${order.amount} Sats für ${currency} ${order.fiat_amount} kaufen.
+
+  Buyer Reputation: ${rate}, Tage mit dem Bot: ${days}
+
+  Hinweis: Vergewissern Sie sich vor der Zahlung der Rechnung, dass das beigefügte Bild mit dem bei der Bestellung gesendeten Bild übereinstimmt
+
+  Bitte bezahle diese LN-Rechnung, um deinen Verkaufsprozess zu starten. Diese LN-Rechnung läuft in ${expirationTime} Minuten ab
+pending_sell: |
+  📝 Dein Angebot wurde im Kanal ${channel} veröffentlicht
+
+  Du musst warten, bis ein anderer Nutzer deinen Auftrag auswählt. Sie wird für ${orderExpirationWindow} Stunden im Kanal verfügbar sein
+
+  Hinweis: Merken Sie sich dieses Bild, da Sie es später in der Zahlungsrechnung wiedersehen werden
+
+  Bevor ein anderer Benutzer dein Angebot annimmt, kannst du diesen mit dem folgenden Befehl stornieren 👇
+cancel_order_cmd: |
+  /cancel ${orderId}
+pending_buy: |
+  📝 Dein Angebot, wurde im Kanal ${channel} veröffentlicht.
+
+  Du musst warten, bis ein anderer Benutzer den Auftrag annimmt\. Dein Angebot läuft in ${orderExpirationWindow} Stunden ab.
+
+  Bevor ein anderer Benutzer dein Angebot annimmt, kannst du diesen mit dem folgenden Befehl stornieren 👇
+must_be_int: ${fieldName} muss eine gültige Nummer sein
+must_be_numeric: ${fieldName} muss numerisch sein
+sats_amount: sats Wert
+fiat_amount: fiat Wert
+sell_correct_format: |
+  /sell \<_Anzahl sats_\> \<_fiat Wert_\> \<_fiat code_\> \<_Zahlungsmethode_\> \[_Zuschlag/Rabatt_\]
+
+  Um einen Verkaufsauftrag von 1000 Sats für 2 Euro \(EUR\) zu erstellen und anzugeben, dass die Zahlung in FIAT durch Überweisung oder Einzahlung am Geldautomaten erfolgt, musst du \<\> und \[\] weglassen\.
+
+  `/sell 1000 2 EUR "Überweisung oder Einzahlung am Geldautomat"`
+
+  Um einen Verkauf mit einem Zuschlag von 3% \(Zuschlag\) zu erstellen, musst du den Parameter 0 verwenden, der den FIAT\-Betrag\ angibt\. Der Bot berechnet den Verkaufspreis anhand des Bitcoin\-Marktpreises und wendet den angegebenen Zuschlag an\. Als letzten Parameter musst du 3 \(für den gewünschten Zuschlag\) hinzufügen
+
+  `/sell 0 2 EUR "Zahlungsmethode" 3`
+
+  Um eine Verkaufsspanne zu erstellen, kannst du statt eines festen FIAT\-Betrags einen Mindest\- und einen Höchstbetrag angeben, die durch einen Bindestrich getrennt sind *\-*
+
+  `/sell 0 100\-500 EUR "Zahlungsmethode" 3`
+buy_correct_format: |
+  /buy \<_Anzahl sats_\> \<_fiat Wert_\> \<_fiat code_\> \<_Zahlungsmethode_\> \[_Zuschlag/Rabatt_\]
+
+  Um einen Auftrag über 1000 Sats für 2 \(EUR\) zu erstellen und anzugeben, dass die Zahlung per Überweisung erfolgt, musst du sowohl \<\> als auch \[\] weglassen\.
+
+  `/buy 1000 2 EUR "Banküberweisung"`
+
+  Wenn du keine feste Menge an Sats festlegen willst und zu einem Preis unter dem Marktwert kaufen möchtest, kannst du ein Kaufauftrag mit einem bestimmten Rabatt aufgeben\. Dieser Rabatt ist der Prozentsatz, der vom Marktpreis abgezogen wird, wenn dein Auftrag veröffentlicht wird\. Du musst im Feld \<_Anzahl sats_\> den Wert 0 angeben, dann berechnet der Bot den Preis\. Wenn du mit einem Rabatt von 2% auf den Marktpreis kaufen möchtest, solltest du \-2 als letzten Parameter angeben
+
+  `/buy 0 2 EUR "Bargeld" \-2`
+
+  Wenn du einen Auftrag in einem gewissen Bereich erstellen willst, anstatt einen festen FIAT\-Betrag anzugeben, kannst du das Minimum und das Maximum für die Transaktion durch einen Bindestrich getrennt angeben *\-*
+
+  `/buy 0 100\-500 EUR "Banküberweisung" \-2`
+min_invoice_amount: LN-Rechnung muss gleich oder höher als ${minPaymentAmount} sats sein
+min_expiration_time: Die Ablaufzeit für die LN-Rechnung muss mindestens ${expirationTime} Minuten betragen
+invoice_expired: Die LN-Rechnung ist abgelaufen
+invoice_expired_long: |
+  Die LN-Rechnung ist abgelaufen. Du kannst mir mit folgendem Befehl eine neue LN-Rechnung schicken, um die sats zu erhalten 👇
+setinvoice_cmd_order: /setinvoice
+invoice_require_destination: Die LN-Rechnung braucht eine Empfängeradresse
+invoice_require_hash: LN-Rechnung braucht einen Hash
+order_id_invalid: Ungültige Auftrags-ID
+order_invalid_type: Der ${type} Auftrag ist ungültig
+order_already_taken: Dieser Auftrag wurde bereits von einem anderen Nutzer übernommen.
+order_already_settled: Diese Bestellung wurde bereits abgewickelt.
+invalid_data: Du hast ungültige Daten gesendet, versuche es erneut.
+begin_take_buy: |
+  🤖 Drücke auf Weiter, um das Angebot anzunehmen. Wenn du auf Abbrechen drückst, wird der Auftrag freigegeben und neu veröffentlicht. Du hast ${expirationTime} Minuten, bevor dieser Auftrag abläuft.
+
+  Hinweis: Merken Sie sich dieses Bild, da Sie es später in der Zahlungsrechnung wiedersehen werden
+continue: Weiter
+cancel: Abbrechen
+pay_invoice: |
+  Hinweis: Vergewissern Sie sich vor der Zahlung der Rechnung, dass das beigefügte Bild mit dem bei der Bestellung gesendeten Bild übereinstimmt
+
+  Bitte bezahle diese LN-Rechnung von ${amount} sats für ${currency} ${fiatAmount}, um den Vorgang zu starten.
+payment_received: |
+  🤑 Zahlung erhalten!
+
+  Jetzt muss mir der Käufer eine LN-Rechnung schicken, damit ich die Sats an sein Wallet senden kann. Sobald der Käufer die LN-Rechnung schickt, werde ich euch beide kontaktieren.
+
+  Warten Sie ein wenig. Wenn der Käufer nicht reagiert, wird der Betrag an Sie zurückgesendet.
+someone_took_your_order: |
+  🤖 Jemand hat deinen Auftrag entgegengenommen und mir bereits die Sats geschickt. Bitte verwende einen FIAT-Zahlungsanbieter, der es dir ermöglicht, das Geld sofort zu überweisen und bei dem kein Risiko besteht, dass das Geld eingefroren wird.
+
+  Wenn dein Zahlungsabwickler die Zahlung aus irgendeinem Grund pausiert und das Geld nicht innerhalb von ${expirationTime} eintrifft, gehen die Sats an den Verkäufer zurück, wodurch der Käufer einem Risiko ausgesetzt ist und ich nicht in der Lage bin, den Verkäufer zu zwingen, die Sats erneut zu senden.
+
+  Verkäufer Ruf: ${rate}, Tage mit dem Bot: ${days}
+
+  Wenn du mit den obigen Angaben einverstanden bist, drücke den Button, um fortzufahren 👇
+you_took_someone_order: |
+  🤖 Wenn du diesen Verkaufsauftrag angenommen hast, verwende bitte einen FIAT\\-Zahlungsanbieter, der es dir ermöglicht, das Geld sofort zu überweisen und bei dem kein Risiko besteht, dass das Geld eingefroren wird\\.
+
+  *Wenn dein Zahlungsabwickler die Zahlung aus irgendeinem Grund pausiert und das Geld nicht innerhalb von ${expirationTime} eintrifft, gehen die Sats an den Verkäufer zurück, wodurch der Käufer einem Risiko ausgesetzt ist und ich nicht in der Lage bin, den Verkäufer zu zwingen, die Sats erneut zu senden\\.*
+
+  Wenn du mit den obigen Angaben einverstanden bist, drücke den Button, um fortzufahren 👇
+get_in_touch_with_seller: |
+  🤖 Order Id: #${orderId}
+
+  Nimm Kontakt mit dem Verkäufer @${sellerUsername} auf, um die Details zu erfahren, wie du ${currency} ${fiatAmount} mit ${paymentMethod} überweisen musst.
+
+  Sobald du das Geld überwiesen hast, gib mir bitte mit dem folgenden Befehl Bescheid 👇
+fiatsent_order_cmd: /fiatsent
+get_in_touch_with_buyer: |
+  🤖 Order Id: #${orderId}
+
+  Nimm Kontakt mit @${buyerUsername} auf, um ihm Informationen darüber zu geben, wie er dir ${currency} ${fiatAmount} über ${paymentMethod} senden kann. Gib die Sats erst frei, wenn du dich vergewissert hast, dass der Käufer das Betrag bezahlt hat.
+
+  Sobald du den Erhalt des Geldes bestätigt hast, musst du die Sats freigeben.
+buyer_took_your_order: |
+  🤖 Order Id: #${orderId}
+
+  @${buyerUsername} hat deinen Auftrag angenommen und möchte deine Sats kaufen. Nimm Kontakt mit ihm auf und sag ihm, wie er dir ${currency} ${fiatAmount} über ${paymentMethod} senden kann.
+  
+  Ich werde dich benachrichtigen, sobald der Käufer mir mitteilt, dass er das Fiat-Geld gesendet hat. Danach musst du überprüfen, ob es angekommen ist.
+
+  Wenn der Käufer nicht antwortet, kannst du eine Stornierung oder eine Streitigkeit einleiten. Denk daran, dass dich ein Administrator NIE kontaktieren wird, um deine Bestellung zu klären, es sei denn, du öffnest zuerst eine Streitigkeit.
+waiting_seller_to_pay: 'Ich habe eine Zahlungsaufforderung an den Verkäufer geschickt, damit er deine Sats für die #${orderId} schickt, sobald die Zahlung erfolgt ist, werde ich euch beide in Kontakt setzen'
+sell_success: Dein Verkauf von Sats wurde abgeschlossen, nachdem die Zahlung von @${buyerUsername} bestätigt wurde. ⚡️🍊⚡️
+funds_released: 🕐 @${sellerUsername} hat die Sats bereits freigegeben. Du kannst jederzeit mit der Bezahlung deiner LN-Rechnung rechnen, aber denke daran, dass deine Wallet online sein muss, um über das Lightning-Netzwerk zu empfangen.
+rate_counterpart: 'Bitte bewerte deine Gegenpartei:'
+cant_process_order: Dieser Auftrag kann nicht bearbeitet werden. Bitte überprüfe, ob die ID korrekt ist.
+cant_release_order: Dieser Auftrag kann nicht freigegeben werden, der Käufer hat keine LN-Rechnung geschickt.
+no_id_related: Du hast keinen Auftrag, der mit dieser Id verbunden ist.
+sell_sats: Verkaufe Sats
+buy_sats: Kaufe Sats
+order_detail: |
+  Id: `${order._id}`
+
+  Status previous to dispute: ${previousDisputeStatus}
+
+  Status: ${status}
+
+  Ersteller: @${creator || ''}
+
+  Käufer: @${buyerUsername || ''}
+
+  Reputation \\(buyer\\): ${buyerReputation}
+
+  Days in operation \\(buyer\\): ${buyerAge}
+
+  Successful trades \\(buyer\\): ${buyerTrades}
+
+  Verkäufer: @${sellerUsername || ''}
+
+  Reputation \\(seller\\): ${sellerReputation}
+
+  Days in operation \\(seller\\): ${sellerAge}
+
+  Successful trades \\(seller\\): ${sellerTrades}
+
+  Bestellwert \\(sats\\): ${order.amount}
+
+  Bot Gebühren \\(sats\\): ${fee}
+
+  Routing Gebühren \\(sats\\): ${order.routing_fee}
+
+  FIAT Wert \\(fiat\\) ${order.fiat_code}: ${order.fiat_amount}
+
+  Zahlungsmethode: ${paymentMethod}
+
+  Zuschlag/Rabatt: ${priceMargin}
+
+  Erstellt am: ${createdAt}
+
+  Ausgeführt am: ${takenAt || ''}
+
+  Rechung Hash Verkäufer: `${order.hash || ''}`
+
+  LN\\-Rechnung Secret Verkäufer: `${order.secret || ''}`
+
+  Zahlungsaufforderung Käufer: `${order.buyer_invoice || ''}`
+seller: Käufer
+buyer: Verkäufer
+dispute_started_channel: |
+  Benutzer ${type} @${initiatorUser} TG ID: ${initiatorTgId} 
+  hat einen Streitfall mit @${counterPartyUser} TG ID: ${counterPartyUserTgId} für den folgenden Auftrag eröffnet 
+
+  ${detailedOrder}
+
+  Seller Token: ${sellerToken}
+  Buyer Token: ${buyerToken}
+
+  @${initiatorUser} war an ${buyerDisputes} Streitfällen beteiligt
+  @${counterPartyUser} war an ${sellerDisputes} Streitfällen beteiligt
+you_started: '🥴 Sie haben einen Streitfall zu Ihrer Bestellnummer begonnen: ${orderId}.'
+counterpart_started: '🥴 Ihre Gegenpartei hat einen Streit über Ihre Bestellungsnummer begonnen: ${orderId}.'
+dispute_started: '${who} Wenn er/sie Ihrem Streitfall zugewiesen wird, teilt der Bot Ihnen seinen/ihren Benutzernamen mit, und nur er/sie kann Sie betreuen. Sie können ihm/ihr direkt schreiben, aber wenn er/sie Sie zuerst kontaktiert, müssen Sie ihn/sie bitten, Ihnen den Token Ihres Streitfalls mitzuteilen, Ihr Token ist: ${token}.'
+must_be_valid_currency: 'Fiat_code muss ein gültiger Code sein, zum Beispiel: USD, EUR, eine vollständige Liste kannst du unter /listcurrencies sehen.'
+must_be_number_or_range: 'Fiat_amount muss eine Zahl oder ein numerischer Bereich im Format <minimum>-<maximum> sein'
+invalid_lightning_address: Ungültige Lightning-Adresse
+unavailable_lightning_address: Nicht verfügbare Lightning-Adresse ${la}
+help: |
+  /sell <_Anzahl sats_> <_fiat Wert_> <_fiat code_> <_Zahlungsmethode_> \[_Zuschlag/Rabatt_] - Erstellt einen Bitcoin Verkaufsauftrag
+  /buy <_Anzahl sats_> <_fiat Wert_> <_fiat code_> <_Zahlungsmethode_> \[_Zuschlag/Rabatt_] - Erstellt eine Bitcoin Kaufauftrag
+  /takeorder <_order id_> - Ermöglicht Ihnen, eine Bestellung aus dem Chat mit dem Bot anzunehmen, ohne zu dem Kanal zu gehen, in dem sie veröffentlicht wurde
+  /info - Zeigt zusätzliche Informationen über das Bot an
+  /showusername - Schaltet die Anzeige des Benutzernamens in jedem neu erstellten Auftrag aus. Der Standardwert ist *nein* (false)
+  /showvolume - zeigt das Handelsvolumen an, wenn eine Auftrag erstellt wird, Standardwert ist *nein* (false)
+  /setinvoice - Mit diesem Befehl kann der Käufer die Ligthning-Rechnung aktualisieren, mit welcher er die Sats empfangen will 
+  /setaddress <_lightning Adresse / off_> - Ermöglicht es dem Käufer, eine statische Zahlungsadresse (Lightning-Adresse) einzurichten, _off_ zum Deaktivieren 
+  /setlang - Ermöglicht dem Benutzer, die Sprache zu ändern
+  /settings - Zeigt die aktuellen Einstellungen des Benutzers an
+  /listorders - Benutze diesen Befehl, um alle deine ausstehenden Transaktionen aufzulisten
+  /listcurrencies - Listet alle FIAT Währungen auf, die wir verwenden können 
+  /fiatsent <_order id_> - Der Käufer teilt mit, dass er dem Verkäufer das FIAT-Geld geschickt hat
+  /release <_order id_> - Der Verkäufer gibt die Sats frei
+  /dispute <_order id_> - Eröffnet einen Streitfall zwischen den beteiligten Parteien
+  /disclaimer - Zeigt den Haftungsausschluss an
+  /cancel <_order id_> - Einen Auftrag stornieren, die noch nicht angenommen wurde
+  /cancelall - Storniere alle aufgegebenen und nicht angenommenen Aufträge
+  /disclaimer - Zeigt die Allgemeinen Geschäftsbedingungen bei der Nutzung des Bots an
+
+  Nostr:
+  /setnpub <_nostr npub_> - Aktualisiert Ihren nostr Pubkey, dieser Befehl ist nur im /settings Wizard ausführbar
+  /nostr - Zeigt den Nostr-Pubkey des Bots und die zum Veröffentlichen verwendeten Relays an
+
+  Gemeinschaften:
+  /community - Erstellen Sie eine neue Community
+  /mycomms - Zeigt die von Ihnen erstellten Communities an
+  /mycomm <_@community_> - Aufrufen des Community-Admin-Assistenten
+  /findcomms <_fiat code_> - Findet Gemeinden, die mit der angegebenen Währung arbeiten
+  /setcomm <_@groupOfACommunity / off_> - Stellen Sie eine Standardgemeinschaft fest oder entfernen Sie sie mit 'off'
+  /settleorder <_order id_> - Akzeptieren Sie die Zahlung des Verkäufers und senden Sie die SATs automatisch an den Käufer. Es muss standardmäßig eine Community geben
+  /cancelorder <_id orden_> - Steckt die Bestellung ab, die die SATs an den Verkäufer zurückgibt. Es muss standardmäßig eine Community geben
+  /deldispute <_username_> <_id order_> - Löscht einen Streit vom Benutzer in der Community, es muss standardmäßig eine Community geben
+  /ban <_username_> - Verbieten Sie einen Benutzer aus einer Community, es sollte eine Standard -Community geben
+  /unban <_username_> - Entsperren Sie einen Benutzer aus einer Community, es sollte eine Standard-Community geben
+
+  /version - Zeigt die aktuelle Version des Bots
+  /help - Hilfe
+must_be_gt_or_eq: ${fieldName} muss ${qty} oder mehr entsprechen
+you_have_been_banned: Du wurdest gesperrt!
+I_told_seller_you_sent_fiat: 🤖 Ich habe @${sellerUsername} gesagt, dass du FIAT-Geld geschickt hast. Wenn der Verkäufer bestätigt, dass er dein Geld erhalten hat, muss er die Mittel freigeben. Falls er sich weigert, kannst du eine Streitigkeit eröffnen.
+buyer_told_me_that_sent_fiat: |
+  🤖 @${buyerUsername} hat mitgeteilt, dass er dir das FIAT-Geld geschickt hat. Sobald du den Erhalt des Geldes bestätigst, bitte gib die Mittel frei. Beachte, dass du bis zur Freigabe der Mittel keine neue Bestellung erstellen oder übernehmen kannst.
+  
+  Nachdem du freigegeben hast, geht das Geld an den Käufer und es gibt kein Zurück mehr. Daher führe diesen Prozess nur durch, wenn du dir 💯 sicher bist.
+  
+  Drücke den folgenden Befehl, wenn du die Sats für den Käufer freigeben möchtest 👇
+release_order_cmd: /release
+you_have_orders_waiting: 🤖 Du hast eine oder mehrere Aufträge, bei denen der Käufer dir mitteilt, dass das Geld an dich geschickt wurde, du es aber noch nicht freigegeben hast. Du kannst keine neuen Aufträge erstellen, bis du das Geld freigibst.
+user_banned: Gesperrter Benutzer!
+user_unbanned: Nicht gesperrter Benutzer!
+user_not_found: Benutzer wurde in der Datenbank nicht gefunden!
+parse_invoice_error: Fehler beim Parsen der LN-Rechnung
+invalid_id: Ungültige Id
+cant_take_own_order: Du kannst deinen eigenen Auftrag nicht annehmen.
+send_me_lninvoice: Bitte sende mir ein Lightning-Network LN-Rechnung für ${amount} sats
+you_have_no_orders: Du hast keine aktiven Aufträge
+not_rate_for_currency: |
+  ${fiatRateProvider} Es gibt keinen Wechselkurs für diese FIAT-Währung,
+  Wenn du diese FIAT-Währung verwenden willst, musst du angeben, wie viele Sats du haben möchtest.
+  Wenn du diese FIAT-Währung in der Liste haben möchtest, kannst du die Funktion /listcurrencies verwenden, um eine Anfrage zu stellen. 👇****
+
+  🌐 https://yadio.io/api.html
+invoice_with_incorrect_amount: Der in der LN-Rechnung angegebene Betrag falsch ist
+invoice_updated: 📝 Die LN-Rechnung wurde korrekt aktualisiert!
+invoice_updated_and_will_be_paid: Die LN-Rechnungen wurden aktualisiert und werden in den nächsten Sekunden bezahlt!
+invoice_already_being_paid: Du hast bereits eine LN-Rechnung für diesen Auftrag geschickt und ich versuche, sie gerade jetzt zu bezahlen.
+lightning_address_saved: Lightning-Adresse wurde gespeichert
+cancel_error: Dieser Auftrag kann im Moment nicht storniert werden
+cancel_success: 'Du hast den Auftrag mit der Id ${orderId} storniert!'
+cancelall_success: Du hast alle deine veröffentlichten Aufträge storniert!
+order_cancelled_by_admin: 'Der Administrator hat den Auftrag mit der ID ${orderId} storniert!'
+order_completed: 'Du hast den Auftrag mit der Id ${orderId} erfolgreich ausgeführt!'
+order_completed_by_admin: 'Der Administrator hat den Auftrag mit der Id ${orderId} erfolgreich ausgeführt!'
+order_cancelled_by_counterparty: 'Ihr Kontrahent hat die Bestell-ID storniert: ${orderId}!'
+have_to_wait_for_counterpart: 🕒 Du hast diesen Vorgang bereits durchgeführt, du musst warten, bis die andere Partei handelt
+ok_cooperativecancel: '👍 Die Gegenpartei hat zugestimmt und der Auftrag mit der Id ${orderId} wurde storniert'
+refund_cooperativecancel: 💰 Du hast eine Rückerstattung deiner Lightning-Zahlung erhalten, es gibt keine weiteren Schritte zu unternehmen
+init_cooperativecancel: |
+  🕒 Du hast mit der Stornierung des Auftrages mit der Id ${orderId} gestartet. Dein Gegenüber muss mir ebenfalls mitteilen, dass er die Stornierung wünscht. Falls er/sie nicht antwortet, kannst du eine Streitigkeit eröffnen.
+  
+  Kein Administrator wird dich kontaktieren, um deine Bestellung zu stornieren, es sei denn, du eröffnest zuerst eine Streitigkeit.
+counterparty_wants_cooperativecancel: |
+  😳 Deine Gegenpartei möchte den Auftrag mit der Id ${orderId} stornieren.
+  
+  Kein Administrator wird dich kontaktieren, um deine Bestellung zu stornieren, es sei denn, du eröffnest zuerst eine Streitigkeit.
+  
+  Wenn du einverstanden bist, benutze den Befehl 👇
+invoice_payment_failed: ⛔ Ich habe versucht, dir die Sats zu schicken, aber die Bezahlung deiner LN-Rechnung ist fehlgeschlagen. Ich werde es noch ${attempts} weitere Male in ${pendingPaymentWindow} Minuten-Intervallen versuchen. Bitte überprüfe, ob dein Node/Wallet online ist.
+cant_take_more_orders: ⛔ Sorry! Du kannst keinen weiteren Auftrag annehmen, während andere auf dich warten
+seller_released: 💸 Der Verkäufer hat die Sats bereits freigegeben, du musst warten, bis deine LN-Rechnung bezahlt ist.
+your_purchase_is_completed: |
+  🪙 Dein Sats-Kauf wurde erfolgreich abgeschlossen, @${sellerUsername} hat deine FIAT-Zahlung bestätigt und ich habe deine LN-Rechnung bezahlt, viel Spaß mit dem sound Money!
+
+  ⚡️🍊⚡️
+problem_getting_price: Es gibt ein Problem beim Zugriff auf den Preis-Feed. Bitte versuche es später noch einmal, wenn das Problem weiterhin besteht, wende dich bitte an einen Adminstrator.
+update_user_setting: Ich habe das Feld ${field} in ${newState} geändert
+lightning_address_disabled: Lightning-Adresse deaktiviert
+invalid_range_with_amount: |
+  Bandbreiten sind nur für variable Sätze verfügbar
+
+  Verwende Bereiche oder gib die Anzahl der Sats an, aber verwende nicht beides
+too_many_pending_orders: Du hast die maximale Anzahl an Aufträgen erreicht, die gleichzeitig veröffentlicht werden können
+name: Name
+group: Gruppe
+channel: Kanal
+solver: Streitschlichter
+published: Veröffentlicht
+created: Erstellt
+yes: Ja
+no: Nein
+wizard_add_invoice_init: |
+  🤖 Du musst mir eine LN-Rechnung über ${satsAmount} Sats schicken, die ${currency} ${fiatAmount} wert ist, damit ich dir später die Sats weiterleiten kann.
+
+  Wenn du mir die LN-Rechnung nicht innerhalb von ${expirationTime} Minuten sendest, wird der Auftrag storniert.
+wizard_add_invoice_exit: |
+  Du hast den Assistentenmodus verlassen, du kannst die Befehle aufschreiben. Du kannst immer noch eine LN-Rechnung zum Auftrag hinzufügen mit dem Befehl /setinvoice, der die Auftrags\-ID und die LN-Rechnung angibt, du kannst mir eine LN-Rechnung über ${Betrag} Sats schicken, aber ich akzeptiere auch LN-Rechnungen ohne Betrag:
+
+  /setinvoice
+wizard_community_enter_name: Wähle einen Namen für deine Community
+wizard_community_too_long_name: Der Name kann eine maximale Länge von ${length} Zeichen haben.
+wizard_community_enter_currency: Gib den Code der FIAT-Währung(en) ein, welche die Nutzer dieser Community verwenden können. Gibt es mehr als einen, musst du jeden Code durch ein Leerzeichen getrennt eingeben.
+wizard_community_enter_group: |
+  Wähle eine ID oder einen Namen für die Gruppe. Du und der Bot müssen Administratoren der Gruppe sein:
+
+  z.B.: @MyCommunity
+wizard_community_enter_order_channels: |
+  Alle Aufträge deiner Community müssen in einem Telegrammkanal veröffentlicht werden, wenn du mir nur einen Kanal angibst, werden sowohl Kauf- als auch Verkaufsaufträge dort veröffentlicht.
+
+  Wenn du zwei Kanäle angibst, werden Kaufaufträge in einem und Verkaufsaufträge in dem anderen platziert. Sowohl du als auch der Bot müssen in beiden Kanälen Administratoren sein.
+
+  Bitte gib den Namen des Kanals an oder, falls du zwei Kanäle verwenden möchtest, gib beide Namen durch ein Leerzeichen getrennt an.
+
+  z.B.: @MyCommunitySell  @MyCommunityBuy
+wizard_community_one_or_two_channels: Du musst entweder einen oder zwei Kanäle angeben
+wizard_community_enter_solvers: Schreibe jetzt bitte die Namen der Nutzer/innen auf, die Streitigkeiten schlichten sollen, jeweils getrennt durch ein Leerzeichen.
+wizard_community_must_enter_names: Du musst mindestens einen Namen hinzufügen, oder zwei durch ein Leerzeichen getrennte Namen
+wizard_community_enter_solvers_channel: Gib die ID oder den Namen des Kanals an, den der Bot verwenden soll, um zu alarmieren, wenn ein Streitfall gemeldet wird.
+wizard_community_success: |
+  Herzlichen Glückwunsch, du hast deine Community gegründet!
+
+  Damit Ihre Community aktiv bleibt, muss sie in den letzten ${days} Tagen erfolgreich Bestellungen abgeschlossen haben.
+wizard_community_wrong_permissions: Du hast keine Administratorrechte für diese Gruppe oder diesen Kanal
+wizard_community_you_are_not_admin: Sie sind kein Administrator von ${channel}.
+Wizard_community_duplicated_name: Der eingegebene Name wird bereits von einer anderen Community verwendet, versuchen Sie es erneut mit einem anderen Namen.
+wizard_to_exit: /exit den Zauberer verlassen.
+wizard_exit: Du hast den Assistentenmodus verlassen, du kannst jetzt Befehle schreiben
+wizard_add_fiat_amount: |
+  Bitte gib den Betrag von ${currency} an, den du für ${action} haben möchtest.
+
+  Denke daran, dass er zwischen ${minAmount} und ${maxAmount} liegen muss:
+wizard_add_fiat_wrong_amount: Ungültiger Betrag, die Eingabe muss zwischen ${minAmount} und ${maxAmount} liegen
+wizard_add_fiat_correct_amount: 'Betrag: ${currency} ${fiatAmount}.'
+order_expired: Dieser Auftrag ist abgelaufen!
+cant_add_invoice: Du kannst keine LN-Rechnung mehr zu diesem Auftrag hinzufügen!
+expired_order: |
+  Dieser Auftrag ist abgelaufen
+
+  ${detailedOrder}
+
+  @${sellerUser.username} hat ${sellerUser.disputes} Streitfälle
+  @${buyerUser.username} hat ${buyerUser.disputes} Streitfälle
+expired_order_to_buyer: |
+  🚨🚨🚨 Dieser Auftrag läuft bald ab und muss sofort abgeschlossen oder storniert werden. Wenn du das Geld noch nicht überwiesen hast, kannst du ihn mit dem Befehl /cancel stornieren.
+
+  Wenn du das FIAT-Geld geschickt hast, der Verkäufer sich aber weigert, die Sats freizugeben, kannst du mit dem Befehl /dispute einen Streitfall eröffnen. Die LN-Rechnung, die der Verkäufer bezahlt hat, hat eine Verfallszeit und du musst diesen Auftrag auflösen, bevor diese abläuft oder du riskierst, dein Geld zu verlieren.
+
+  Wenn du Hilfe brauchst, kannst du an die Gruppe ${helpGroup} schreiben
+expired_order_to_seller: |
+  🚨🚨🚨 Dieser Auftrag läuft bald ab und muss sofort ausgeführt oder storniert werden. Wenn du das FIAT-Geld noch nicht erhalten hast, kannst du ihn mit dem Befehl /cancel noch stornieren.
+
+  Wenn du das FIAT-Geld erhalten hast, gibst du es bitte mit dem Befehl /release frei. Andernfalls läufst du Gefahr, dass der Käufer einen Streitfall eröffnet, der deinen Ruf beeinträchtigen wird.
+
+  Wenn du Hilfe brauchst, kannst du an die Gruppe ${helpGroup} schreiben
+didnt_add_invoice: '🤨 Du hast die LN-Rechnung noch nicht gesendet, um Sats für den Auftrag zu erhalten: ${orderId}'
+buyer_havent_add_invoice: '😔 Der Käufer hat mir die LN-Rechnung für den Erhalt der Sats für deinen Auftrag nicht geschickt: Auftrag ${orderId}. Deine Sats wurden an dich zurückgeschickt.'
+buyer_havent_add_invoice_to_admin_channel: 'Käufer @${username} hat den Auftrag ${orderId} angenommen, aber keine LN-Rechnung gesendet. Die Zeit ist abgelaufen, der Auftrag wird neu veröffentlicht.'
+havent_paid_invoice: '🤨 Du hast die LN-Rechnung nicht bezahlt, um Sats für den Auftrag (${orderId}) zu verkaufen.'
+seller_havent_paid_invoice: '😔 Der Verkäufer hat die LN-Rechnung für deinen Auftrag (${orderId}) nicht bezahlt. Der Vorgang wurde storniert.'
+seller_havent_add_invoice_to_admin_channel: 'Verkäufer @${username} hat die LN-Rechnung des Auftrages (${orderId}) nicht bezahlt. Der Auftrag ist abgelaufen und wurde wieder veröffentlicht.'
+pending_payment_success_to_admin: |
+  Benutzer @${username} hatte eine ausstehende LN-Rechnung, die Zahlung für die Auftrag: ${orderId} für ${amount} Sats, wurde nach ${attempts} Versuchen endlich ausgeführt.
+
+  Zahlungsnachweis: ${paymentSecret}
+pending_payment_success: |
+  Ich habe die LN-Rechnung über ${amount} Sats für den Auftrag ${id} bezahlt!
+
+  Zahlungsnachweis: ${paymentSecret}
+pending_payment_failed: |
+  🤖 Ich habe ${attempts} Mal versucht, deine LN-Rechnung zu bezahlen und bin gescheitert. Manchmal können Nutzer des Lightning-Netzwerks keine Zahlungen erhalten, weil ihre Wallet nicht genügend Guthaben auf ihrem Node hat. Du solltest versuchen, eine LN-Rechnung von einer anderen Wallet mit genügend Guthaben zu erstellen.
+
+  Wenn du mir eine neue LN-Rechnung schicken möchtest, um die Sats zu erhalten, benutze bitte den folgenden Befehl. 👇
+pending_payment_failed_to_admin: |
+  Die Bezahlung der LN-Rechnung für den Auftrag ${orderId} des Benutzers @${username} ist fehlgeschlagen.
+
+  Zahlungsversuche: ${attempts}
+selling: Verkaufe
+buying: Kaufe
+receive_payment: Zahlung erhalten
+pay: Bezahlen
+is: ist
+trading_volume: 'Handelsvolumen: ${Volumen} Sats'
+satoshis: Sats
+by: mit
+rate: Rate
+has_successful_trades: Hat ${trades} erfolgreiche Aufträge abgeschlossen
+user_age: "Nutzt den Bot seit ${pluralize(days, 'Tag', 'Tagen')}"
+price: Preis
+for: Für
+generic_error: Ein Fehler ist aufgetreten
+sats: sats
+no_capital_letters: 🤖 Du versuchst, einen Befehl auszuführen, bei dem der erste Buchstabe groß geschrieben wird. Bitte schreibe den gesamten Befehl in Kleinbuchstaben.
+unknown_command: 😕 Ich verstehe das nicht. Bitte benutze /help, um die Liste der verfügbaren Befehle zu sehen
+invoice_invalid_error: |
+  Fehler beim Parsen der LN-Rechnung. Bitte füge eine Lightning-Netzwerk LN-Rechnung ein, die mit "lnbc" beginnt.
+
+  Wenn du abbrechen und in den Befehlseingabemodus zurückkehren willst, tippe einfach /exit
+invoice_expiry_too_short_error: LN-Rechnungsablauf ist zu kurz
+invoice_has_expired_error: Die LN-Rechnung ist abgelaufen
+invoice_has_wrong_destination_error: Die LN-Rechnung hat ein falsches Ziel
+invoice_must_be_larger_error: Die LN-Rechnung muss für mindestens ${minInvoice} Sats gelten
+hours: Stunden
+minutes: Minuten
+community_updated: Community erfolgreich aktualisiert
+operation_successful: Befehl erfolgreich!
+select_community: Wähle die Community
+what_modify: Was willst du ändern?
+channels: Kanäle
+dispute_solvers: Streitschlichter
+no_default_community: Du hast keine standardmäßige Community mehr
+community_not_found: Community nicht gefunden
+currency: Währung
+currencies: Währungen
+currency_not_supported: |
+  Diese Währung kann in dieser Community nicht verwendet werden, es ist nur erlaubt, [${currencies}] zu verwenden.
+
+  Sie können diese Community verlassen, indem Sie /setcomm off ausführen.
+press_to_continue: Drücke den Knopf um weiterzufahren
+receive: erhalten
+send: senden
+new_dispute: ⚠️⚠️⚠️ Ein Benutzer hat einen Streitfall eröffnet. Drück den Knopf um den Streitfall zu übernehmen
+take_dispute: Streitfall übernehmen
+not_authorized: 🤨 Du bist nicht berechtigt diese Aktion durchzuführen
+need_default_community: Um diese Aktion durchzufüren, musst du eine Standart-Community gesetzt haben
+enter_sats_amount: Sats-Betrag eingeben, Geben Sie nur Zahlen ein.
+market_price: Marktpreis
+enter_currency: 'Gib eine Währung anhand des Codes ein, z.B.: USD'
+choose_currency: Wähle eine Währung
+enter_currency_amount: Gib den Betrag in ${currency} ein, enter only numbers.
+no_premium_or_discount: No premium or discount
+enter_premium_discount: Enter the premium(+) or discount(-) to apply to the market price.
+enter_payment_method: Gib die Zahlungsmethode ein (z.B. Banküberweisung)
+invalid_currency: Ungültige Währung
+not_number: Es muss eine Zahl sein
+not_zero: Darf nicht 0 (Null) sein
+not_negative: Darf keine negative Nummer sein
+wizard_community_wrong_percent: Der Prozentsatz muss zwischen 0 und 100 liegen
+wizard_community_enter_fee_percent: |
+  Geben Sie die Gebühr ein:
+
+  Die Gebühr in einer Community ist variabel und wird als Prozentsatz von 0 bis 100 angegeben. Wenn Sie keine Gebühr erheben möchten, geben Sie 0 an, wenn Sie die Hälfte des Maximalwert erheben wollen, geben Sie 50 an. 100 für den Maximalwert.
+fee: Gebühr
+use_default: Standardmäßig verwenden
+orders: Aufträge
+volume: Volumen
+users: Benutzer
+not_found_dispute: Für diesen Auftrag gib es keinen Streitfall
+max_allowed: Das maximal erlaubte ist ${max}
+dispute_channel: Streitkanal
+not_wizard: Sie sind momentan nicht im Assistentenmodus. Für Hilfe verwenden Sie /help
+wizard_help: Sie befinden sich im Assistentenmodus, wenn Sie wieder zum Befehlsmodus wollen, verwenden Sie /exit
+hold_invoice_memo: '@${botName} - Auftrag #${orderId}: BTC verkaufen für ${fiatCode} ${fiatAmount} - Der Betrag wird im gehalten, bis Sie diesen mit /release freigeben. Wenn der Käufer nicht bestätigt, wird der Betrag zurückbezahlt.'
+tap_button: Wählen Sie eine Bestellung, um den Vorgang auszuführen
+tap_release: Wählen Sie die Reihenfolge aus, um die Mittel freizugeben. Sobald Sie die Schaltfläche berühren, kann der Vorgang nicht rückgängig gemacht werden.
+earnings: Verdienste
+premium: Prämie
+discount: Rabatt
+premium_discount: Prämie / Rabatt
+withdraw_earnings: Verdienste auszahlen
+invoice_expired_earnings: Die LN-Rechnung ist abgelaufen. Wiederhole eine Auszahlungsanfrage mit einer neuen LN-Rechnung.
+what_to_do: Was möchten Sie tun?
+community: Community
+seller_already_released: Machen Sie sich keine Sorgen, der Verkäufer hat die Mittel bereits veröffentlicht 🥲
+select_language: Sprache auswählen
+must_enter_text: Sie müssen nur Text eingeben
+current_earnings: |
+  Bisherige Bestellungen in der Community: ${ordersToRedeem}
+
+  Community-Einkommen: ${earnings} Sats
+you_dont_have_communities: Sie haben keine Community erstellt
+users_added: 'Du hast ${users} hinzugefügt.'
+users_not_added: 'Konnte ${users} nicht hinzufügen. Bitte stellen Sie sicher, dass dieser Benutzer den Bot gestartet hat (/start)'
+delete_community: Delete community
+are_you_sure: Are you sure?
+no_permission: You do not have permissions to perform this operation
+make_public: Make public
+make_private: Make private
+bot_kicked: Bot was kicked from chat, must be member and admin
+chat_not_found: Chat not found, are you sure you added the bot to the group/channel?
+not_member: You are not member of that chat
+upgraded_to_supergroup: The chat was upgraded to 'supergroup' and the Id has changed, check the chat Id again
+community_deleted: Diese Community wurde aufgrund von Inaktivität gelöscht, ich habe dich davon getrennt, versuche die Bestellung erneut zu erstellen
+disput_too_soon: Sie können einen Streit nicht so früh beginnen, seien Sie geduldig und warten Sie ein paar Minuten, bis Ihre Gegenpartei antwortet
+maintenance: 🚨 Bot in Wartung, bitte versuche es später noch einmal 🚨
+# START modules/nostr
+user_npub_updated: Sie haben Ihren Pubkey ${npub} erfolgreich hinzugefügt!
+nostr_info: |
+  npub:
+  <code>${npub}</code>
+
+  hex:
+  <code>${publicKey}</code>
+
+  relays:
+  ${relays}
+npub_not_valid: |
+  Kein gültiger <a href="https://github.com/nostr-protocol/nips/blob/master/19.md">NIP-19</a> npub. Bitte überprüfen Sie Ihre Eingabe.
+
+  Beispiel:
+  /setnpub npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6
+# END modules/nostr
+
+# START modules/community
+community_admin: |
+  <strong>Community Admin Mode</strong>
+  > ${community.name} (${community.group})
+  
+  Public:
+    ${community.public ? 'Yes' : 'No'}
+  Fee:
+    ${community.fee}
+  Earnings:
+    ${community.earnings}
+  npub:
+    <code>${community.nostr_public_key || ''}</code>
+
+  /help - help messages.
+  /exit - to exit the wizard.
+community_admin_help: |
+  <strong>Community Admin Mode</strong>
+  # commands
+
+  /setnpub &lt;npub&gt; - Configure Nostr community's public key.
+community_npub_updated: You added the community's pubkey ${npub} successfully!
+# END modules/community
+
+# START modules/orders
+order_not_found: Bestellung nicht gefunden.
+# END modules/orders
+
+# START modules/user
+user_settings: |
+  <strong>User settings for @${user.username}</strong>
+
+  Language:
+    ${language.emoji} ${language.name}
+  Community:
+    ${community || '🛇'}
+  npub:
+    <code>${npub || '🛇'}</code>
+  lightning address:
+    <code>${lightning_address || '🛇'}</code>
+
+  <strong># HELP</strong>
+  /setnpub &lt;npub&gt; - Configure user's Nostr public key.
+  /exit - to exit the wizard.
+# END modules/user
+# check hold invoice
+invoice_settled: Rechnung wurde bereits niedergelassen
+invoice_cancelled: Rechnung storniert
+invoice_held: Rechnung festgehalten
+invoice_no_info: Ich habe keine Informationen für diese Rechnung
+bot_info: |
+  Bot fee: ${bot_fee}
+
+  Max routing fee: ${routing_fee}
+
+  Node URI: `${node_uri}`
+  
+  Node status: ${status}
+
+  User info:
+
+  ${user_info}
+user_info: |
+  Volume traded: ${volume_traded}
+  Total rating: ${total_rating}
+  Disputes: ${disputes}
+disclaimer: |
+  *Mit der Nutzung des P2P-Trade-Bots erklären Sie sich mit den folgenden Bedingungen einverstanden:*
+
+  Der Bot ist eine Open-Source-Software, die von jedermann genutzt, kopiert, verändert und ausgeführt werden kann. Die Entwickler sind nicht verantwortlich für die Handlungen anderer Personen, die die Software in irgendeiner Weise nutzen, sei es legal oder illegal, ehrlich oder unehrlich.
+
+  Der Bot wird so zur Verfügung gestellt, wie er ist" und wie er verfügbar ist", und die Entwickler geben keine ausdrücklichen oder stillschweigenden Garantien in Bezug auf den Bot oder seine Verwendung.
+
+  Die Entwickler und die Streitschlichter bemühen sich nach besten Kräften, die Nutzung des Bots durch böswillige Akteure, Betrüger und Schwindler zu unterbinden, aber der Nutzer erkennt an, dass das System ausgenutzt werden kann, und übernimmt die volle Verantwortung für seine Nutzung.
+
+  Weder die Entwickler noch die Streitschlichter sind für Verluste oder Schäden verantwortlich, die dem Benutzer durch die Nutzung des Bots entstehen können.
+order_frozen: Sie haben die Bestellung eingefroren
+dispute_solver: 👮‍♂️ Ein Löser wird sich um Ihren Streitfall kümmern, Sie können ihn/sie direkt anschreiben, indem Sie auf seinen/ihren Benutzernamen tippen => @${solver} <=, wenn der Löser Sie zuerst anschreibt, sollten Sie ihn/sie bitten, Ihnen mitzuteilen, was das Token Ihres Streitfalls ist, Ihr Token ist ${token}.
+setinvoice_no_response: Sie haben keine zu bezahlenden Aufträge
+already_cancelled: Die Bestellung wurde bereits storniert!
+privacy: |
+  *Datenschutzrichtlinie*
+  
+  Ihre Privatsphäre ist uns wichtig, und wir sind verpflichtet, Ihre persönlichen Daten zu schützen. Diese Datenschutzrichtlinie erklärt, welche Informationen wir sammeln, wie und zu welchem Zweck.
+
+  *1. Informationen, die wir sammeln:*  
+    - _Benutzerinformationen:_ Ihr Benutzername und Ihre Telegram-ID, die über die Telegram-API erfasst werden.
+    - _Bot-Aktivitätsdaten:_ Dazu gehören die Anzahl der abgeschlossenen Transaktionen, die Anzahl der Tage, an denen Sie den Bot verwendet haben, das gesamte Handelsvolumen, die Bewertung des Gegenübers und das Streitprotokoll, falls vorhanden.
+
+  *2. Wie wir die Informationen verwenden:* 
+    - _Reputationssystem:_ Um das Reputationssystem für jeden Benutzer aufzubauen und zu pflegen.
+    - _Streitbeilegung:_ Im Falle eines Streits stellen wir dem Mediator (Löser) die folgenden Informationen zur Verfügung: Ihren Benutzernamen, Ihre Telegram-ID, die Anzahl der abgeschlossenen Transaktionen, die Bewertung des Gegenübers, die Anzahl der Tage, an denen Sie den Bot verwendet haben, und die Anzahl der angesammelten Streitfälle.
+check_solvers: Ihre Community ${communityName} hat keine Solver. Bitte fügen Sie innerhalb von ${remainingDays} Tagen mindestens einen hinzu, um zu verhindern, dass die Community deaktiviert wird.
+check_solvers_last_warning: Ihre Community ${communityName} hat keine Solver. Bitte fügen Sie noch heute mindestens einen hinzu, um zu verhindern, dass die Community deaktiviert wird.
